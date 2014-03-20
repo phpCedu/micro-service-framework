@@ -10,7 +10,7 @@ class Server {
         // Got request from transport
         $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
         // Decode message body using this protocol
-        $request->decodeUsing($protocol);
+        $request->decodeUsing($this->protocol);
         // Was there an error in decoding?
         
         // Pass request to all the chained filters
@@ -26,25 +26,33 @@ class Server {
         
         if (!($request instanceof Exception)) {
             // Now dispatch?
-            $destination = $request->rpcCall;
-            $args = $request->rpcArgs;
-            $version = $request->rpcVersion;
+            $destination = $request->rpc;
+            $args = $request->args;
+            $version = $request->version;
+
+            $class = $destination[0];
+            $method = $destination[1];
             // Does the request version match the version we have here?
-            if ($version != $destination::$version) {
+            if ($version != $class::$version) {
                 // Version mismatch error!
             }
         
-            $value = $this->dispatch($destination, $params);
+            if (!is_array($args)) {
+                $args = array();
+            }
+            $value = call_user_func_array(array(new $class(), $method), $args);
             
             // Now wrap in the appropriate response
             $class = $this->outTransport->responseClass;
+
             $response = new $class();
             $response->rpc = $request->rpc;
             // Don't copy the request's args into the response
             $response->version = $version;
             $response->body = $value;
+
             // Who's in charge of encoding?
-            $response->encodeUsing($protocol);
+            $response->encodeUsing($this->protocol);
         }
         
         // Use the $i from the above loop to loop backwards from where we left off
@@ -55,8 +63,9 @@ class Server {
             $response = $filter->response($response);
         }
         
+//var_dump($response);
         // Just in case our transport is simply a buffer, we should return the body
-        return $responseTransport->write($response);
+        return $this->outTransport->write($response);
     }
 }
 
@@ -72,6 +81,14 @@ class BaseProtocol {
     }
     public function decode($data) {
         return $data;
+    }
+}
+class JsonProtocol extends BaseProtocol {
+    public function encode($data) {
+        return json_encode($data);
+    }
+    public function decode($data) {
+        return json_decode($data, true);
     }
 }
 
@@ -129,7 +146,7 @@ class HTTPTransport {
         // Now write out the response annotations as headers
         foreach ($r->annotations as $key => $value) {
             // Do proper encoding, line-returning
-            header($key . ':' . $value);
+            header('HTTP_Z_' . $key . ':' . $value);
         }
         
         // Now write the response body
@@ -138,7 +155,7 @@ class HTTPTransport {
 }
 // This class is only concerned with reading the HTTP body ... it assumes the HTTP headers have already been parsed
 // In the case of most PHP requests, this will be the case
-class PartialHTTPTransport {
+class PartialHTTPTransport extends HTTPTransport {
     public function read() {
         $r = new HTTPRequestResponse();
         // headers should already be in $_SERVER, now just extract the ones that pertain to us
@@ -156,7 +173,7 @@ class PartialHTTPTransport {
         // Write out the response annotations as headers
         foreach ($r->annotations as $key => $value) {
             // Do proper encoding, line-returning
-            header($key . ':' . $value);
+            header('HTTP_Z_' . $key . ':' . $value);
         }
 
         echo $r->encoded;
@@ -165,12 +182,12 @@ class PartialHTTPTransport {
 
 class BaseRequestResponse {
     // RPC related
-    public $rpc; // An array with class and method
-    public $args = array();
-    public $version = 0;
+    protected $rpc; // An array with class and method
+    protected $args;
+    protected $version;
     // Body
-    public $body;
-    public $encoded; // Transports only read/write encoded values
+    protected $body;
+    protected $encoded; // Transports only read/write encoded values
     // Stuff to make Filters easier
     protected $parent;
 
@@ -212,6 +229,15 @@ class BaseRequestResponse {
     }
     public function __get($name) {
         // Proxy up to parent in same manner as __call
+        if (isset($this->$name)) {
+            return $this->$name;
+        } elseif ($this->parent) {
+            return $this->parent->$name;
+        }
+    }
+    public function __set($name, $value) {
+        // Need some checks here, to make sure we're only setting protected variables
+        $this->$name = $value;
     }
 }
 
@@ -242,12 +268,12 @@ class MsgPackProtocol extends BaseProtocol {
 class MyFilterDoesMetrics extends Filter {
     protected $started;
     public function request(BaseRequestResponse $request) {
-        $this->started = microtime();
+        $this->started = microtime(true);
         return $request;
     }
     public function response($response) {
         // Annotate $response with metric data ... from where?
-        $response->annotations['metric-runtime'] = microtime() - $this->started;
+        $response->annotations['SECONDS'] = number_format(microtime(true) - $this->started, 8);
         return $response;
     }
 }
@@ -263,34 +289,56 @@ class HTTPRequestResponse2 extends HTTPRequestResponse {
 }
 
 class MyFilterAnnotatesResponseWithOOB extends Filter {
-    public function response(HTTPResponse $response) {
+    public function response(HTTPRequestResponse $response) {
+        $response->annotations['OOB'] = 'oob';
+        return $response;
     }
 }
 
-class RPCImplementation {
-    public $version = 1;
+class MyService {
+    public static $version = 1;
     
+    public function childReverse($name) {
+        $data = array(
+            'rpc' => array('MyService', 'reverse'),
+            'args' => array($name)
+        );
+
+        $ch = curl_init('http://localhost:9998/index.php');
+        if(!$ch) {
+            die('Curl Error');
+        }
+        curl_setopt($ch, CURLOPT_HEADER, 0); // set to 0 to eliminate header info from response
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
+
+        $response = curl_exec($ch); //execute post and get results
+
+        if($response === false) {
+            $e = curl_error($ch);
+        } else {
+            $data = json_decode($response, true);
+            return $data['body'];
+        }
+    }
+
     // Need some type-checking on input params, right? or is that too tedious to do at this level?
-    public function method(\Tool\Types\Int $in1, \Tool\Types\CustomValidatedType $in2) {
-        return 'Value';
+    public function reverse($name) {
+        return strrev($name);
     }
 }
 
-/*
-In my mind you need separate transports for input and output so out-of-band data isn't squashed or duplicated.
-*/
-$inTransport = new HTTPTransport();
-// Maybe this should be a pass-through so we can echo our output like the test_service.php example
-$outTransport = new HTTPTransport();
+// Transport determines the type of request and response (BaseRequestResponse or other), though Filters can change this
+$inTransport = $outTransport = new PartialHTTPTransport();
 
 $server = new MyServer();
 // Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
-$server->protocol = new MsgPackProtocol();
+$server->protocol = new JsonProtocol();
 $server->inTransport = $inTransport; // In transport determines the starting class of the request
 $server->outTransport = $outTransport; // Out transport determines the starting class of the response, I think ...
-// We need to know exactly which type of output response type ...
-$server->responseClass = 'HTTPResponse';
 
 $server->filters[] = new MyFilterDoesMetrics();
 $server->filters[] = new MyFilterConvertsRequest();
 $server->filters[] = new MyFilterAnnotatesResponseWithOOB();
+
+$server->run();
