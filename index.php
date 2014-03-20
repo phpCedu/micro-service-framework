@@ -5,13 +5,13 @@ class Server {
     public $inTransport;
     public $outTransport;
     // Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
-    public $protocol = new MsgPack();
+    public $protocol = new MyProtocolUsesMsgPack();
     
     function run() {
         // Got request from transport
         $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
         // Decode message body using this protocol
-        $request->body = $protocol->decode($request->body);
+        $request = $protocol->decode($request);
         // Was there an error in decoding?
         
         // Pass request to all the chained filters
@@ -27,8 +27,13 @@ class Server {
         
         if (!($request instanceof Exception)) {
             // Now dispatch?
-            $destination = $this->decodeRPCDestination($request);
-            $params = $this->decodeRPCParams($request);
+            $destination = $request->rpcCall;
+            $args = $request->rpcArgs;
+            $version = $request->rpcVersion;
+            // Does the request version match the version we have here?
+            if ($version != $destination::$version) {
+                // Version mismatch error!
+            }
         
             $value = $this->dispatch($destination, $params);
             
@@ -51,8 +56,14 @@ class Server {
     }
 }
 
+class BaseProtocol {
+    // encode / decode
+}
+
+
 class Client {
     // Haven't thought about the client yet
+    // Pull version out of Service definition
 }
 
 // Each filter sees the request coming in, and the response going out (in reverse order through the filter stack)
@@ -125,7 +136,12 @@ as necessary.
 */
 class BaseRequest {
     protected $parent;
+    public $rpcCall; // An array with class and method
+    public $rpcArgs = array();
+    public $rpcVersion = 0;
+    
     public $body;
+    public $encoded;
     // See note in BaseResponse about annotations
     public $annotations = array();
     
@@ -163,6 +179,39 @@ class HTTPResponse extends BaseResponse {
 
 class MyServer extends Server {
     // Nothing custom yet
+}
+
+// This functionality is quite fuzzy
+public function MyProtocolUsesMsgPack extends BaseProtocol {
+    public function encodeRequest(BaseRequest $request) {
+        $data = array(
+            'rpc' => $request->rpc,
+            'args' => $request->args,
+            'version' => $request->version
+        );
+        $request->encoded = msgpack_pack($data);
+        return $response;
+    }
+    public function decodeRequest(BaseRequest $request) {
+        $data = msgpack_unpack($request->encoded);
+        // Do we need to store the decoded body in $request->body?
+        // Request values get annotated with the RPC call, arguments, etc
+        $r = new RPCRequest($request);
+        $r->rpc = $data['rpc'];
+        $r->args = $data['args'];
+        $r->version = $data['version'];
+        return $r;
+    }
+    
+    public function encodeResponse(BaseResponse $response) {
+        // Might need to wrap in some sort of data structure
+        $response->encoded = msgpack_pack($response->body);
+        return $response;
+    }
+    public function decodeResponse(BaseResponse $response) {
+        $response->body = msgpack_unpack($response->encoded);
+        return $response;
+    }
 }
 
 class MyFilterDoesMetrics extends Filter {
@@ -207,6 +256,8 @@ class MyFilterAnnotatesResponseWithOOB extends Filter {
 }
 
 class RPCImplementation {
+    public $version = 1;
+    
     // Need some type-checking on input params, right? or is that too tedious to do at this level?
     public function method(\Tool\Types\Int $in1, \Tool\Types\CustomValidatedType $in2) {
         return 'Value';
