@@ -5,13 +5,13 @@ class Server {
     public $inTransport;
     public $outTransport;
     // Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
-    public $protocol = new MyProtocolUsesMsgPack();
+    public $protocol = new MsgPackProtocol();
     
     function run() {
         // Got request from transport
         $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
         // Decode message body using this protocol
-        $request = $protocol->decode($request);
+        $request->decodeUsing($protocol);
         // Was there an error in decoding?
         
         // Pass request to all the chained filters
@@ -38,9 +38,14 @@ class Server {
             $value = $this->dispatch($destination, $params);
             
             // Now wrap in the appropriate response
-            $class = $this->responseClass;
+            $class = $this->outTransport->responseClass;
             $response = new $class();
-            $response->body = $protocol->encode($value);
+            $response->rpc = $request->rpc;
+            // Don't copy the request's args into the response
+            $response->version = $version;
+            $response->body = $value;
+            // Who's in charge of encoding?
+            $response->encodeUsing($protocol);
         }
         
         // Use the $i from the above loop to loop backwards from where we left off
@@ -70,10 +75,10 @@ class Client {
 // BUT FILTERS SHOULDN'T BE ALLOWED TO MODIFY THE REQUEST OR RESPONSE BODY
 interface Filter {
     // Should return some instance of BaseResponse
-    public function request(BaseRequest $request) {
+    public function request(BaseRequestResponse $request) {
         return $request;
     }
-    public function response(BaseResponse $response) {
+    public function response(BaseRequestResponse $response) {
         return $response;
     }
 }
@@ -83,71 +88,112 @@ class BaseTransport {
         throw new Exception('This transport does not support out-of-band data');
     }
     public function read() {
-        return 'Data that was read';
     }
     public function write() {
     }
 }
 class HTTPTransport {
     public $headers = array();
+    protected $socket;
+    public $responseClass = 'HTTPRequestResponse';
     
-    public function __construct($
+    public function __construct($socket = null) {
+        $this->socket = $socket;
+    }
     public function oobKeyValue($name, $value) {
         // Add to headers
         $headers[ $key ] = $value;
     }
     public function read() {
+        $r = new HTTPRequestResponse();
         // Read full response from socket ... but in PHP land the headers are already read for us
-        $request = file_get_contents($socket);
+        //$request = file_get_contents($this->socket);
         // Split headers and body
-        $headers = 'bla';
-        $this->headers = explode('\r\n', $headers); // need to convert to key=>value too
-        $body = 'bla';
+        $headers = 'ONE: TWO';
+        $r->headers = explode('\r\n', $headers); // need to convert to key=>value too
+        $r->encoded = 'bla';
+        return $r;
     }
-    public function write($response) {
+    public function write($r) {
         // Write out $this->headers
         // Now write out the response annotations as headers
-        foreach ($response->annotations as $key => $value) {
+        foreach ($r->annotations as $key => $value) {
             // Do proper encoding, line-returning
             header($key . ':' . $value);
         }
         
         // Now write the response body
+        // fwrite($this->socket, $r->encoded);
     }
 }
 // This class is only concerned with reading the HTTP body ... it assumes the HTTP headers have already been parsed
 // In the case of most PHP requests, this will be the case
 class PartialHTTPTransport {
     public function read() {
+        $r = new HTTPRequestResponse();
         // headers should already be in $_SERVER, now just extract the ones that pertain to us
         // Loop through $_SERVER looking for headers with our special "HTTP_ABC123" prefix
+        // $r->headers['ONE'] = 'TWO';
         
         // just read the remainder of the body
-        $body = file_get_contents('php://input');
-        return $body;
+        $r->encoded = file_get_contents('php://input');
+        return $r;
+    }
+
+    public function write($r) {
+        // Write out non-annotation headers
+        // then
+        // Write out the response annotations as headers
+        foreach ($r->annotations as $key => $value) {
+            // Do proper encoding, line-returning
+            header($key . ':' . $value);
+        }
+
+        echo $r->encoded;
     }
 }
 
-/*
-Think it's desirable for request objects to be wrapped in layers like an onion.
-Otherwise, when converting a BaseRequest to HTTPRequest, we'd have to clone all the data from Base into HTTP, which is error prone.
-Better to simply wrap it, allow member variable accesses and method calls on HTTPRequest to take precedence, deferring to BaseRequest
-as necessary.
-*/
-class BaseRequest {
-    protected $parent;
-    public $rpcCall; // An array with class and method
-    public $rpcArgs = array();
-    public $rpcVersion = 0;
-    
+class BaseRequestResponse {
+    // RPC related
+    public $rpc; // An array with class and method
+    public $args = array();
+    public $version = 0;
+    // Body
     public $body;
-    public $encoded;
-    // See note in BaseResponse about annotations
-    public $annotations = array();
-    
+    public $encoded; // Transports only read/write encoded values
+    // Stuff to make Filters easier
+    protected $parent;
+
     public function __construct($parent = null) {
         $this->parent = $parent;
     }
+
+    // Encode/Decode this request/response using the specified protocol
+    public function encodeUsing($protocol) {
+        $data = array(
+            'rpc' => $this->rpc,
+            'args' => $this->args,
+            'version' => $this->version,
+            'body' => $this->body
+        );
+        $this->encoded = $protocol->encode($data);
+    }
+    public function decodeUsing($protocol) {
+        $data = $protocol->decode($this->encoded);
+        // Do we need to store the decoded body in $request->body?
+        // Request values get annotated with the RPC call, arguments, etc
+        $this->rpc = $data['rpc'];
+        $this->args = $data['args'];
+        $this->version = $data['version'];
+        $this->body = $data['body'];
+    }
+
+    /*
+    Think it's desirable for request objects to be wrapped in layers like an onion.
+    Otherwise, when converting a BaseRequest to HTTPRequest, we'd have to clone all the data from Base into HTTP, which is error prone.
+    Better to simply wrap it, allow member variable accesses and method calls on HTTPRequest to take precedence, deferring to BaseRequest
+    as necessary.
+    */
     public function __call($name, $args) {
         // Attempt to call this method on the parent
         if ($this->parent) {
@@ -158,18 +204,11 @@ class BaseRequest {
         // Proxy up to parent in same manner as __call
     }
 }
-class HTTPRequest extends BaseRequest {
-    // associative
-    public $headers = array();
-}
 
-class BaseResponse {
-    public $body;
+class HTTPRequestResponse extends BaseRequestResponse {
     // The idea is that we can add annotations, but not all transports have a way of supporting them, maybe?
     // We were going to encode some data in HTTP headers, so an HTTPTransport would take the annotations and convert them to headers
     public $annotations = array();
-}
-class HTTPResponse extends BaseResponse {
     // associative
     public $headers = array();
 }
@@ -181,42 +220,18 @@ class MyServer extends Server {
     // Nothing custom yet
 }
 
-// This functionality is quite fuzzy
-public function MyProtocolUsesMsgPack extends BaseProtocol {
-    public function encodeRequest(BaseRequest $request) {
-        $data = array(
-            'rpc' => $request->rpc,
-            'args' => $request->args,
-            'version' => $request->version
-        );
-        $request->encoded = msgpack_pack($data);
-        return $response;
+public function MsgPackProtocol extends BaseProtocol {
+    public function encode($data) {
+        return msgpack_pack($data);
     }
-    public function decodeRequest(BaseRequest $request) {
-        $data = msgpack_unpack($request->encoded);
-        // Do we need to store the decoded body in $request->body?
-        // Request values get annotated with the RPC call, arguments, etc
-        $r = new RPCRequest($request);
-        $r->rpc = $data['rpc'];
-        $r->args = $data['args'];
-        $r->version = $data['version'];
-        return $r;
-    }
-    
-    public function encodeResponse(BaseResponse $response) {
-        // Might need to wrap in some sort of data structure
-        $response->encoded = msgpack_pack($response->body);
-        return $response;
-    }
-    public function decodeResponse(BaseResponse $response) {
-        $response->body = msgpack_unpack($response->encoded);
-        return $response;
+    public function decode($data) {
+        return msgpack_unpack($data);
     }
 }
 
 class MyFilterDoesMetrics extends Filter {
     protected $started;
-    public function request(BaseRequest $request) {
+    public function request(BaseRequestResponse $request) {
         $this->started = microtime();
         return $request;
     }
@@ -227,27 +242,14 @@ class MyFilterDoesMetrics extends Filter {
     }
 }
 
-class MyFilterConvertsToHTTPRequest extends Filter {
-    public function request(BaseRequest $request) {
-        $req = new HTTPRequest();
-        $req->body = $request->body;
-        // Is there anything else to copy?
+class MyFilterConvertsRequest extends Filter {
+    public function request(HTTPRequestResponse $request) {
+        // Wrap it like an onion
+        $req = new HTTPRequestResponse2($request);
         return $req;
     }
 }
-
-class MyFilterConvertsToHTTPRequest2 extends Filter {
-    // Returns an HTTPRequest2 instance
-    function request(HTTPRequest $request) {
-        // annotate $request, or do something
-        $req2 = new HTTPRequest2();
-        $req2->headers = $request->headers;
-        $req2->body = $request->body;
-        return $req2;
-    }
-}
-class HTTPRequest2 extends HTTPRequest {
-    // Nothing custom
+class HTTPRequestResponse2 extends HTTPRequestResponse {
 }
 
 class MyFilterAnnotatesResponseWithOOB extends Filter {
@@ -272,12 +274,11 @@ $inTransport = new HTTPTransport();
 $outTransport = new HTTPTransport();
 
 $server = new MyServer();
-$server->inTransport = $inTransport;
-$server->outTransport = $outTransport;
+$server->inTransport = $inTransport; // In transport determines the starting class of the request
+$server->outTransport = $outTransport; // Out transport determines the starting class of the response, I think ...
 // We need to know exactly which type of output response type ...
 $server->responseClass = 'HTTPResponse';
 
 $server->filters[] = new MyFilterDoesMetrics();
-$server->filters[] = new MyFilterConvertsToHTTPRequest(); // Convert the BaseRequest instance (which has RPC info) to an HTTPRequest
-$server->filters[] = new MyFilterConvertsToHTTPRequest2();
+$server->filters[] = new MyFilterConvertsRequest();
 $server->filters[] = new MyFilterAnnotatesResponseWithOOB();
