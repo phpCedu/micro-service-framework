@@ -4,8 +4,7 @@ class Server {
     public $filters = array();
     public $inTransport;
     public $outTransport;
-    // Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
-    public $protocol = new MsgPackProtocol();
+    public $protocol;
     
     function run() {
         // Got request from transport
@@ -73,7 +72,7 @@ class Client {
 
 // Each filter sees the request coming in, and the response going out (in reverse order through the filter stack)
 // BUT FILTERS SHOULDN'T BE ALLOWED TO MODIFY THE REQUEST OR RESPONSE BODY
-interface Filter {
+class Filter {
     // Should return some instance of BaseResponse
     public function request(BaseRequestResponse $request) {
         return $request;
@@ -220,7 +219,7 @@ class MyServer extends Server {
     // Nothing custom yet
 }
 
-public function MsgPackProtocol extends BaseProtocol {
+class MsgPackProtocol extends BaseProtocol {
     public function encode($data) {
         return msgpack_pack($data);
     }
@@ -274,6 +273,8 @@ $inTransport = new HTTPTransport();
 $outTransport = new HTTPTransport();
 
 $server = new MyServer();
+// Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
+$server->protocol = new MsgPackProtocol();
 $server->inTransport = $inTransport; // In transport determines the starting class of the request
 $server->outTransport = $outTransport; // Out transport determines the starting class of the response, I think ...
 // We need to know exactly which type of output response type ...
