@@ -1,16 +1,17 @@
 <?php
 
-class Server {
+class BaseServer {
     public $filters = array();
     public $inTransport;
     public $outTransport;
-    public $protocol;
+    public static $protocol;
+    public static $response;
     
     function run() {
         // Got request from transport
         $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
         // Decode message body using this protocol
-        $request->decodeUsing($this->protocol);
+        $request->decodeUsing(static::$protocol);
         // Was there an error in decoding?
         
         // Pass request to all the chained filters
@@ -36,23 +37,25 @@ class Server {
             if ($version != $class::$version) {
                 // Version mismatch error!
             }
-        
-            if (!is_array($args)) {
-                $args = array();
-            }
-            $value = call_user_func_array(array(new $class(), $method), $args);
-            
-            // Now wrap in the appropriate response
-            $class = $this->outTransport->responseClass;
 
-            $response = new $class();
+            // Get the response ready, so we can annotate it before filling the value
+            // Now wrap in the appropriate response
+            $responseClass = $this->outTransport->responseClass;
+            $response = new $responseClass();
+            BaseServer::$response = $response;
             $response->rpc = $request->rpc;
             // Don't copy the request's args into the response
             $response->version = $version;
-            $response->body = $value;
+        
+            // Dispatch to our implementation
+            if (!is_array($args)) {
+                $args = array();
+            }
+            $response->body = call_user_func_array(array(new $class(), $method), $args);
 
             // Who's in charge of encoding?
-            $response->encodeUsing($this->protocol);
+            $response->encodeUsing(static::$protocol);
+
         }
         
         // Use the $i from the above loop to loop backwards from where we left off
@@ -122,10 +125,14 @@ class BaseTransport {
 class HTTPTransport {
     public $headers = array();
     protected $socket;
+    protected $data;
     public $responseClass = 'HTTPRequestResponse';
     
-    public function __construct($socket = null) {
+    public function socket($socket) {
         $this->socket = $socket;
+    }
+    public function data($data) {
+        $this->data = $data;
     }
     public function oobKeyValue($name, $value) {
         // Add to headers
@@ -133,12 +140,23 @@ class HTTPTransport {
     }
     public function read() {
         $r = new HTTPRequestResponse();
-        // Read full response from socket ... but in PHP land the headers are already read for us
-        //$request = file_get_contents($this->socket);
+        if ($this->data) {
+        } elseif ($this->socket) {
+        }
+
         // Split headers and body
-        $headers = 'ONE: TWO';
-        $r->headers = explode('\r\n', $headers); // need to convert to key=>value too
-        $r->encoded = 'bla';
+        list($headers, $body) = explode("\r\n\r\n", $this->data);
+        $r->encoded = $body;
+        foreach (explode("\r\n", $headers) as $header) {
+            if (strncasecmp($header, 'HTTP_Z_', 7) == 0) {
+                $colon = strpos($header, ':');
+                $key = trim(substr($header, 7, $colon-7));
+                $value = trim(substr($header, $colon+1));
+                $r->annotations[ $key ] = $value;
+                // Push up to Server too
+                BaseServer::$response->annotations[ $key ] = $value;
+            }
+        } // need to convert to key=>value too
         return $r;
     }
     public function write($r) {
@@ -252,7 +270,7 @@ class HTTPRequestResponse extends BaseRequestResponse {
 
 // IMPLEMENTATIONS
 
-class MyServer extends Server {
+class MyServer extends BaseServer {
     // Nothing custom yet
 }
 
@@ -267,13 +285,15 @@ class MsgPackProtocol extends BaseProtocol {
 
 class MyFilterDoesMetrics extends Filter {
     protected $started;
+    protected $rpc;
     public function request(BaseRequestResponse $request) {
+        $this->rpc = $request->rpc[1];
         $this->started = microtime(true);
         return $request;
     }
     public function response($response) {
         // Annotate $response with metric data ... from where?
-        $response->annotations['SECONDS'] = number_format(microtime(true) - $this->started, 8);
+        $response->annotations[ $this->rpc ] = number_format(microtime(true) - $this->started, 8);
         return $response;
     }
 }
@@ -306,9 +326,9 @@ class MyService {
 
         $ch = curl_init('http://localhost:9998/index.php');
         if(!$ch) {
-            die('Curl Error');
+            throw new Exception('Curl Error');
         }
-        curl_setopt($ch, CURLOPT_HEADER, 0); // set to 0 to eliminate header info from response
+        curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
         curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
 
@@ -316,9 +336,13 @@ class MyService {
 
         if($response === false) {
             $e = curl_error($ch);
+            throw new Exception($e);
         } else {
-            $data = json_decode($response, true);
-            return $data['body'];
+            $t = new HTTPTransport();
+            $t->data($response);
+            $httpResponse = $t->read();
+            $httpResponse->decodeUsing(BaseServer::$protocol);
+            return $httpResponse->body;
         }
     }
 
@@ -331,9 +355,10 @@ class MyService {
 // Transport determines the type of request and response (BaseRequestResponse or other), though Filters can change this
 $inTransport = $outTransport = new PartialHTTPTransport();
 
+// Thinking MyServer::$response should be public static ... nested client call response annotations would get pushed up into that
 $server = new MyServer();
 // Always encoded in msgpack, for now. This could be a class that encoded/decoded and also verified that they RPC call data matched the definition
-$server->protocol = new JsonProtocol();
+BaseServer::$protocol = new JsonProtocol();
 $server->inTransport = $inTransport; // In transport determines the starting class of the request
 $server->outTransport = $outTransport; // Out transport determines the starting class of the response, I think ...
 
