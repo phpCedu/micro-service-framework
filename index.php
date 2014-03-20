@@ -95,8 +95,8 @@ class JsonProtocol extends BaseProtocol {
     }
 }
 
-
-class Client {
+// No clue
+class BaseClient {
     // Haven't thought about the client yet
     // Pull version out of Service definition
 }
@@ -262,6 +262,8 @@ class BaseRequestResponse {
 class HTTPRequestResponse extends BaseRequestResponse {
     // The idea is that we can add annotations, but not all transports have a way of supporting them, maybe?
     // We were going to encode some data in HTTP headers, so an HTTPTransport would take the annotations and convert them to headers
+
+    // Seems like these should inherit from the BaseClient::$annotations ... or something
     public $annotations = array();
     // associative
     public $headers = array();
