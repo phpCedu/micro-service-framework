@@ -60,8 +60,19 @@ class Server {
     }
 }
 
+/*
+This doesn't encapsulate an actual protocol, I'm just mirroring thrift's terminology.
+What I think this should do is do type checking for the RPC calls, but that requires us to define the service calls and types ...
+so that'll be a work in progress.
+*/
 class BaseProtocol {
     // encode / decode
+    public function encode($data) {
+        return $data;
+    }
+    public function decode($data) {
+        return $data;
+    }
 }
 
 
