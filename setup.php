@@ -17,6 +17,8 @@ class BaseService {
     public $version = 0;
     public static $clientClass = 'BaseClient';
 
+    // Maybe it'd be better to accept a client class as a param,
+    // that way we can override this method, pass our own to this parent method
     public function client() {
         $class = static::$clientClass;
         $client = new $class();
@@ -522,7 +524,7 @@ class MyFilterAnnotatesResponseWithOOB extends Filter {
     }
 }
 
-class MyServiceImplementation {
+class MyServiceHandler {
     public static $version = 1;
     
     public function childReverse($name) {
@@ -552,7 +554,7 @@ class MyService extends BaseService {
         $this->protocol = new JsonProtocol();
 
         // On the server side
-        $this->handler = new MyServiceImplementation();
+        $this->handler = new MyServiceHandler();
     }
 }
 class MyService2 extends MyService {
