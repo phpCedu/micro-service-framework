@@ -444,33 +444,9 @@ class MyServiceImplementation {
     public static $version = 1;
     
     public function childReverse($name) {
-        // This is what the BaseClient internals might look like
-        $data = array(
-            'rpc' => array('MyServiceImplementation', 'reverse'),
-            'args' => array($name)
-        );
-
-        $ch = curl_init('http://localhost:9999/index.php');
-        if(!$ch) {
-            throw new Exception('Curl Error');
-        }
-        curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data));
-
-        $response = curl_exec($ch); //execute post and get results
-
-        if($response === false) {
-            $e = curl_error($ch);
-            throw new Exception($e);
-        } else {
-            $t = new HTTPTransport();
-            $t->data($response);
-            $httpResponse = $t->read();
-            // The client will know which protocol, shouldn't pull it from the current server
-            $httpResponse->decodeUsing(BaseServer::$protocol);
-            return $httpResponse->body;
-        }
+        $service = new MyService2();
+        $client = $service->client();
+        return $client->reverse($name);
     }
 
     // Need some type-checking on input params, right? or is that too tedious to do at this level?
@@ -493,5 +469,8 @@ class MyService extends BaseService {
         // On the server side
         $this->handler = new MyServiceImplementation();
     }
+}
+class MyService2 extends MyService {
+    public $endpoint = 'http://localhost:9998/index.php';
 }
 

@@ -6,6 +6,7 @@ include('setup.php');
 $service = new MyService();
 $client = $service->client();
 
-$out = $client->reverse('Alan');
+$out = $client->childReverse('Alan');
 
 var_dump($out);
+var_dump($client->response);
