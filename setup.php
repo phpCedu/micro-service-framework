@@ -1,5 +1,15 @@
 <?php
 
+class Logger {
+    public static $fp;
+    public static function notice($text) {
+        if (!static::$fp) {
+            static::$fp = fopen('php://stderr', 'w');
+        }
+        fwrite(static::$fp, $text);
+    }
+}
+
 class BaseService {
     public $endpoint;
     public $transport;
@@ -21,6 +31,7 @@ class BaseServer {
     public $outTransport;
     public $service; // Which Service is being served
 
+    protected $_oob = array();
     protected static $instance;
     /*
     These are public and static because when a service call needs to make a nested
@@ -45,8 +56,9 @@ class BaseServer {
         return static::$instance;
     }
 
-    public function __construct($service) {
+    protected function __construct($service) {
         $this->service = $service;
+        static::$instance = $this;
     }
     
     function run() {
@@ -81,7 +93,7 @@ class BaseServer {
             // Get the response ready, so we can annotate it before filling the value
             // Now wrap in the appropriate response
             $response = $this->outTransport->newResponse($this->service);
-            BaseServer::$response = $response;
+            //BaseServer::$response = $response;
             $response->rpc = $request->rpc;
             // Don't copy the request's args into the response
             $response->version = $version;
@@ -95,6 +107,16 @@ class BaseServer {
             // Who's in charge of encoding?
             $response->encodeUsing($this->service->protocol);
 
+            // Merge in OOB data
+            foreach ($this->oob() as $key => $value) {
+                if (is_array($value)) {
+                    foreach ($value as $v) {
+                        $response->oob($key, $v);
+                    }
+                } else {
+                    $response->oob($key, $value);
+                }
+            }
         }
         
         // Use the $i from the above loop to loop backwards from where we left off
@@ -107,6 +129,38 @@ class BaseServer {
         
         // Just in case our transport is simply a buffer, we should return the body
         return $this->outTransport->write($response);
+    }
+
+    public function clientResponse($response) {
+        // Bubble up some things
+        foreach ($response->oob() as $key => $value) {
+            if (is_array($value)) {
+                foreach ($value as $v) {
+                    $this->oob($key, $v);
+                }
+            } else {
+                $this->oob($key, $value);
+            }
+        }
+    }
+
+    public function oob($key=null, $value=null) {
+        if ($key == null) {
+            return $this->_oob;
+        }
+        if ($value == null) {
+            return $this->_oob[$key];
+        }
+        if (isset($this->_oob[$key])) {
+            if (!is_array($this->_oob[$key])) {
+                $this->_oob[$key] = array(
+                    $this->_oob[$key]
+                );
+            }
+            $this->_oob[$key][] = $value;
+        } else {
+            $this->_oob[$key] = $value;
+        }
     }
 }
 
@@ -139,8 +193,8 @@ class BaseClient {
     public $request;
     public $response;
 
-    // Haven't thought about the client yet
-    // Pull version out of Service definition
+    // If this client is running within a server instance, tell that server
+    // bubble up stuff
     protected function gotResponse($response) {
         $server = BaseServer::context();
         if ($server) {
@@ -215,7 +269,6 @@ class BaseTransport {
 class HTTPTransport extends BaseTransport {
     protected $requestClass = 'HTTPRequestResponse';
     protected $responseClass = 'HTTPRequestResponse';
-    public $headers = array();
     protected $socket;
     protected $data;
     
@@ -224,10 +277,6 @@ class HTTPTransport extends BaseTransport {
     }
     public function data($data) {
         $this->data = $data;
-    }
-    public function oobKeyValue($name, $value) {
-        // Add to headers
-        $headers[ $key ] = $value;
     }
     public function read() {
         $r = new HTTPRequestResponse();
@@ -243,23 +292,31 @@ class HTTPTransport extends BaseTransport {
                 $colon = strpos($header, ':');
                 $key = trim(substr($header, 7, $colon-7));
                 $value = trim(substr($header, $colon+1));
-                $r->annotations[ $key ] = $value;
-                // Push up to Server too
-                BaseServer::$response->annotations[ $key ] = $value;
+                $r->oob($key, $value);
             }
         } // need to convert to key=>value too
         return $r;
     }
+
     public function write($r) {
         // Write out $this->headers
         // Now write out the response annotations as headers
-        foreach ($r->annotations as $key => $value) {
-            // Do proper encoding, line-returning
-            header('HTTP_Z_' . $key . ':' . $value);
-        }
-        
+        $this->writeOOB($r->oob());
+       
         // Now write the response body
         // fwrite($this->socket, $r->encoded);
+    }
+
+    protected function writeOOB($oob) {
+        foreach ($oob as $key => $value) {
+            if (is_array($value)) {
+                foreach ($value as $v) {
+                    header('HTTP_Z_' . $key . ':' . $v, false);
+                }
+            } else {
+                header('HTTP_Z_' . $key . ':' . $value, false);
+            }
+        }
     }
 }
 // This class is only concerned with reading the HTTP body ... it assumes the HTTP headers have already been parsed
@@ -280,10 +337,7 @@ class PartialHTTPTransport extends HTTPTransport {
         // Write out non-annotation headers
         // then
         // Write out the response annotations as headers
-        foreach ($r->annotations as $key => $value) {
-            // Do proper encoding, line-returning
-            header('HTTP_Z_' . $key . ':' . $value);
-        }
+        $this->writeOOB($r->oob());
 
         echo $r->encoded;
     }
@@ -383,13 +437,31 @@ class BaseRequestResponse {
 }
 
 class HTTPRequestResponse extends BaseRequestResponse {
-    // The idea is that we can add annotations, but not all transports have a way of supporting them, maybe?
-    // We were going to encode some data in HTTP headers, so an HTTPTransport would take the annotations and convert them to headers
-
-    // Seems like these should inherit from the BaseClient::$annotations ... or something
-    public $annotations = array();
     // associative
     public $headers = array();
+
+    // The idea is that we can add annotations, but not all transports have a way of supporting them, maybe?
+    // We were going to encode some data in HTTP headers, so an HTTPTransport would take the annotations and convert them to headers
+    protected $_oob = array();
+
+    public function oob($key=null, $value=null) {
+        if ($key == null) {
+            return $this->_oob;
+        }
+        if ($value == null) {
+            return $this->_oob[$key];
+        }
+        if (isset($this->_oob[$key])) {
+            if (!is_array($this->_oob[$key])) {
+                $this->_oob[$key] = array(
+                    $this->_oob[$key]
+                );
+            }
+            $this->_oob[$key][] = $value;
+        } else {
+            $this->_oob[$key] = $value;
+        }
+    }
 }
 
 
@@ -418,7 +490,7 @@ class MyFilterDoesMetrics extends Filter {
     }
     public function response($response) {
         // Annotate $response with metric data ... from where?
-        $response->annotations[ $this->rpc ] = number_format(microtime(true) - $this->started, 8);
+        $response->oob($this->rpc, number_format(microtime(true) - $this->started, 8));
         return $response;
     }
 }
@@ -435,7 +507,7 @@ class HTTPRequestResponse2 extends HTTPRequestResponse {
 
 class MyFilterAnnotatesResponseWithOOB extends Filter {
     public function response(HTTPRequestResponse $response) {
-        $response->annotations['OOB'] = 'oob';
+        $response->oob('OOB', 'oob');
         return $response;
     }
 }
@@ -446,6 +518,9 @@ class MyServiceImplementation {
     public function childReverse($name) {
         $service = new MyService2();
         $client = $service->client();
+        // 3 calls to make sure multiple OOB runtimes bubble up
+        $name = $client->reverse($name);
+        $name = $client->reverse($name);
         return $client->reverse($name);
     }
 
