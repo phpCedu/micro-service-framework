@@ -495,8 +495,12 @@ class MyFilterDoesMetrics extends Filter {
         return $request;
     }
     public function response($response) {
-        // Annotate $response with metric data ... from where?
-        $response->oob($this->rpc, number_format(microtime(true) - $this->started, 8));
+        $data = array(
+            'start' => $this->started,
+            'end' => microtime(true),
+            'host' => gethostname()
+        );
+        $response->oob($this->rpc, json_encode($data));
         return $response;
     }
 }
