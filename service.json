@@ -1,0 +1,15 @@
+{
+    // ALL methods can also return an exception, perhaps ... hmm, how will that play with futures?
+    'childReverse': {
+        'type': 'string',
+        // problem is, structs aren't ordered, so this is the most straightforward way, less nesting
+        'argNames': ['name'],
+        'argTypes': ['string']
+    },
+    'reverse': {
+        'type': 'string',
+        // problem is, structs aren't ordered
+        'argNames': ['name'],
+        'argTypes': ['string']
+    }
+}
