@@ -248,9 +248,6 @@ class BaseTransport {
         $this->service = $service;
     }
 
-    public function oobKeyValue($name, $value) {
-        throw new Exception('This transport does not support out-of-band data');
-    }
     public function read() {
     }
     public function write() {
@@ -263,6 +260,10 @@ class BaseTransport {
     public function newResponse() {
         $class = $this->responseClass;
         return new $class(null, $this->service);
+    }
+    public function oob($key = null, $value = null) {
+        // BaseTransport doesn't support OOB
+        return array();
     }
 }
 // Incomplete
@@ -408,6 +409,11 @@ class BaseRequestResponse {
         $this->args = $data['args'];
         $this->version = $data['version'];
         $this->body = $data['body'];
+    }
+
+    public function oob($key = null, $value = null) {
+        // BaseRequestResponse doesn't support OOB
+        return array();
     }
 
     /*
