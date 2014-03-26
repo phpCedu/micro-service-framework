@@ -3,8 +3,12 @@
 class Logger {
     public static $fp;
     public static function notice($text) {
-        if (!static::$fp) {
-            static::$fp = fopen('php://stderr', 'w');
+        if (!defined('STDERR')) {
+            if (!static::$fp) {
+                static::$fp = fopen('php://stderr', 'w');
+            }
+        } else {
+            static::$fp = STDERR;
         }
         fwrite(static::$fp, $text);
     }
@@ -14,7 +18,6 @@ class BaseService {
     public $endpoint;
     public $transport;
     public $protocol;
-    public $version = 0;
     public static $clientClass = 'BaseClient';
 
     // Maybe it'd be better to accept a client class as a param,
@@ -75,7 +78,8 @@ class BaseServer {
             $request = $filter->request($request);
             // Is $request an instance of an error? ... If so, don't pass to any more filters
             if ($request instanceof Exception) { // Filters shouldn't return Exceptions, this is just an example
-                $response = $this->makeResponse(); // This would make a response according to $this->responseClass, right?
+                $response = $this->outTransport->newResponse();
+                // Annotate with error info ... who knows yet
                 // Unwind with a response
                 break;
             }
@@ -85,20 +89,10 @@ class BaseServer {
             // Now dispatch?
             $rpc = $request->rpc;
             $args = $request->args;
-            $version = $request->version;
-
-            // Does the request version match the version we have here?
-            if ($version != $this->service->version) {
-                // Version mismatch error!
-            }
 
             // Get the response ready, so we can annotate it before filling the value
-            // Now wrap in the appropriate response
-            $response = $this->outTransport->newResponse($this->service);
-            //BaseServer::$response = $response;
+            $response = $this->outTransport->newResponse();
             $response->rpc = $request->rpc;
-            // Don't copy the request's args into the response
-            $response->version = $version;
         
             // Dispatch to our implementation
             if (!is_array($args)) {
@@ -109,7 +103,9 @@ class BaseServer {
             // Who's in charge of encoding?
             $response->encodeUsing($this->service->protocol);
 
-            // Merge in OOB data
+            // Merge in OOB data ... but maybe a Filter should be in charge of this ...
+            // Perhaps it should copy OOB from request, and amend to response on the way out.
+            // Nevermind, that would take care of nested RPC calls
             foreach ($this->oob() as $key => $value) {
                 if (is_array($value)) {
                     foreach ($value as $v) {
@@ -123,16 +119,18 @@ class BaseServer {
         
         // Use the $i from the above loop to loop backwards from where we left off
         // UNSURE ABOUT WHETHER WE SHOULD UNROLL IF WE GOT AN ERROR, OR RETURN STRAIGHT AWAY
-        // MIGHT BE NICE TO GIVE FILTERS THE OPTION TO ANNOTATE
+        // MIGHT BE NICE TO GIVE FILTERS THE OPTION TO ANNOTATE IN THE EVENT OF AN ERROR
         for (; $i >=0; $i--) {
             $filter = $this->filters[$i];
             $response = $filter->response($response);
         }
         
         // Just in case our transport is simply a buffer, we should return the body
+        // (yuck)
         return $this->outTransport->write($response);
     }
 
+    // Don't like this being here, maybe it can be done better
     public function clientResponse($response) {
         // Bubble up some things
         foreach ($response->oob() as $key => $value) {
@@ -168,7 +166,7 @@ class BaseServer {
 
 /*
 This doesn't encapsulate an actual protocol, I'm just mirroring thrift's terminology.
-What I think this should do is do type checking for the RPC calls, but that requires us to define the service calls and types ...
+Perhaps this is where RPC type checking should take place, but that requires us to define the service calls and types ...
 so that'll be a work in progress.
 */
 class BaseProtocol {
@@ -213,7 +211,6 @@ class BaseClient {
         $request = $transport->newRequest();
         $request->rpc = $name;
         $request->args = $args;
-        $request->version = 1;
         $request->encodeUsing($protocol);
 
         $transport->write($request);
@@ -242,8 +239,6 @@ class Filter {
 }
 
 class BaseTransport {
-    protected $requestClass = 'BaseRequestResponse';
-    protected $responseClass = 'BaseRequestResponse';
     public $service;
 
     public function __construct($service) {
@@ -256,12 +251,10 @@ class BaseTransport {
     }
 
     public function newRequest() {
-        $class = $this->requestClass;
-        return new $class(null, $this->service);
+        return new BaseRequestResponse();
     }
     public function newResponse() {
-        $class = $this->responseClass;
-        return new $class(null, $this->service);
+        return new BaseRequestResponse();
     }
     public function oob($key = null, $value = null) {
         // BaseTransport doesn't support OOB
@@ -270,8 +263,6 @@ class BaseTransport {
 }
 // Incomplete
 class HTTPTransport extends BaseTransport {
-    protected $requestClass = 'HTTPRequestResponse';
-    protected $responseClass = 'HTTPRequestResponse';
     protected $socket;
     protected $data;
     
@@ -308,6 +299,13 @@ class HTTPTransport extends BaseTransport {
        
         // Now write the response body
         // fwrite($this->socket, $r->encoded);
+    }
+
+    public function newRequest() {
+        return new HTTPRequestResponse();
+    }
+    public function newResponse() {
+        return new HTTPRequestResponse();
     }
 
     protected function writeOOB($oob) {
@@ -380,17 +378,14 @@ class BaseRequestResponse {
     // RPC related
     protected $rpc; // An array with class and method
     protected $args;
-    protected $version;
     // Body
     protected $body;
     protected $encoded; // Transports only read/write encoded values
     // Stuff to make Filters easier
     protected $parent;
-    protected $service;
 
-    public function __construct($parent = null, $service = null) {
+    public function __construct($parent = null) {
         $this->parent = $parent;
-        $this->service = $service;
     }
 
     // Encode/Decode this request/response using the specified protocol
@@ -398,7 +393,6 @@ class BaseRequestResponse {
         $data = array(
             'rpc' => $this->rpc,
             'args' => $this->args,
-            'version' => $this->version,
             'body' => $this->body
         );
         $this->encoded = $protocol->encode($data);
@@ -409,7 +403,6 @@ class BaseRequestResponse {
         // Request values get annotated with the RPC call, arguments, etc
         $this->rpc = $data['rpc'];
         $this->args = $data['args'];
-        $this->version = $data['version'];
         $this->body = $data['body'];
     }
 
@@ -525,7 +518,6 @@ class MyFilterAnnotatesResponseWithOOB extends Filter {
 }
 
 class MyServiceHandler {
-    public static $version = 1;
     
     public function childReverse($name) {
         $service = new MyService2();
