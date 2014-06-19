@@ -17,7 +17,8 @@ class Logger {
 class BaseService {
     public $endpoint;
     public $transport;
-    public $protocol;
+    public $encoder; // Can encode as JSON, or MsgPack, etc
+    public $definition; // Interface definition for this service
     public static $clientClass = 'BaseClient';
 
     // Maybe it'd be better to accept a client class as a param,
@@ -41,13 +42,13 @@ class BaseServer {
     /*
     These are public and static because when a service call needs to make a nested
     RPC call, it needs to know which response to bubble up OOB-data/annotations into.
-    Though, I guess the protocol doesn't need to be public, since that depends on the
-    RPC call being made ... the client should know which protocol needs to be spoken.
+    Though, I guess the encoder doesn't need to be public, since that depends on the
+    RPC call being made ... the client should know which encoding needs to be spoken.
 
-    So is it the Service that defines the protocol? Or the server? Probably Service ...
+    So is it the Service that defines the encoder? Or the server? Probably Service ...
     since Client and Server both use the same Service definition, that make sense.
     */
-    public static $protocol;
+    public static $encoder; // why this?
     public static $response;
 
     public static function create($service) {
@@ -69,8 +70,8 @@ class BaseServer {
     function run() {
         // Got request from transport
         $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
-        // Decode message body using this protocol
-        $request->decodeUsing($this->service->protocol);
+        // Decode message body using this encoding 
+        $request->decodeUsing($this->service->encoder);
         // Was there an error in decoding?
         
         // Pass request to all the chained filters
@@ -98,10 +99,51 @@ class BaseServer {
             if (!is_array($args)) {
                 $args = array();
             }
-            $response->body = call_user_func_array(array($this->service->handler, $rpc), $args);
+            // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
+            if (!isset($this->definition['methods'][$rpc])) {
+                // Method doesn't exist
+            }
+            $method_definition = $this->definition['methods'][$rpc];
+            /*
+            Keep it simple for now:
+            - args are required
+            - do simple type checking
+            */
+            foreach ($method_definition[1] as $i => $type) {
+                $val = $args[$i];
+                if (is_null($val)) {
+                    // FAIL
+                    // Log the error
+                    continue;
+                }
+                if ($type == 'string') {
+                    if (!is_string($val)) {
+                        // Expected $i-th arg to be a string
+                    }
+                } elseif ($type == 'int32') {
+                    if (!is_int($val)) {
+                        // Expected $i-th arg to be an integer
+                    }
+                }
+            }
+            $return_value = call_user_func_array(array($this->service->handler, $rpc), $args);
+            if ($method_definition[0] == 'null') {
+                if (!is_null($return_value)) {
+                    // FAIL
+                }
+            } elseif ($method_definition[0] == 'string') {
+                if (!is_string($return_value)) {
+                    // FAIL
+                }
+            } elseif ($method_definition[0] == 'int32') {
+                if (!is_int($return_value)) {
+                    // FAIL
+                }
+            }
+            $response->body = $return_value;
 
             // Who's in charge of encoding?
-            $response->encodeUsing($this->service->protocol);
+            $response->encodeUsing($this->service->encoder);
 
             // Merge in OOB data ... but maybe a Filter should be in charge of this ...
             // Perhaps it should copy OOB from request, and amend to response on the way out.
@@ -165,11 +207,14 @@ class BaseServer {
 }
 
 /*
-This doesn't encapsulate an actual protocol, I'm just mirroring thrift's terminology.
 Perhaps this is where RPC type checking should take place, but that requires us to define the service calls and types ...
 so that'll be a work in progress.
 */
-class BaseProtocol {
+interface Encoder {
+    public function encode($data);
+    public function decode($data);
+}
+class BaseEncoder implements EncoderInterface {
     // encode / decode
     public function encode($data) {
         return $data;
@@ -178,7 +223,7 @@ class BaseProtocol {
         return $data;
     }
 }
-class JsonProtocol extends BaseProtocol {
+class JsonEncoder extends BaseEncoder {
     public function encode($data) {
         return json_encode($data);
     }
@@ -206,17 +251,17 @@ class BaseClient {
     public function __call($name, $args) {
         $service = $this->service;
         $transport = $service->transport;
-        $protocol = $service->protocol;
+        $encoder = $service->encoder;
         
         $request = $transport->newRequest();
         $request->rpc = $name;
         $request->args = $args;
-        $request->encodeUsing($protocol);
+        $request->encodeUsing($encoder);
 
         $transport->write($request);
         // Get response
         $response = $transport->read();
-        $response->decodeUsing($protocol);
+        $response->decodeUsing($encoder);
         $this->gotResponse($response);
 
         // For posterity
@@ -388,17 +433,17 @@ class BaseRequestResponse {
         $this->parent = $parent;
     }
 
-    // Encode/Decode this request/response using the specified protocol
-    public function encodeUsing($protocol) {
+    // Encode/Decode this request/response using the specified encoder 
+    public function encodeUsing($encoder) {
         $data = array(
             'rpc' => $this->rpc,
             'args' => $this->args,
             'body' => $this->body
         );
-        $this->encoded = $protocol->encode($data);
+        $this->encoded = $encoder->encode($data);
     }
-    public function decodeUsing($protocol) {
-        $data = $protocol->decode($this->encoded);
+    public function decodeUsing($encoder) {
+        $data = $encoder->decode($this->encoded);
         // Do we need to store the decoded body in $request->body?
         // Request values get annotated with the RPC call, arguments, etc
         $this->rpc = $data['rpc'];
@@ -472,7 +517,7 @@ class MyServer extends BaseServer {
     // Nothing custom yet
 }
 
-class MsgPackProtocol extends BaseProtocol {
+class MsgPackEncoder extends BaseEncoder {
     public function encode($data) {
         return msgpack_pack($data);
     }
@@ -537,13 +582,27 @@ class MyServiceHandler {
 class MyService extends BaseService {
     public $endpoint = 'http://localhost:9999/index.php';
     public $transport;
-    public $protocol;
+    public $encoder;
+
+    public $definition = array(
+        'types' => array(
+        ),
+        'methods' => array(
+            'reverse' => array(
+                // return type
+                'string',
+                // param types
+                array(
+                    'string'
+                ),
+            )
+        )
+    );
 
     public function __construct() {
         $this->transport = new CurlTransport($this);
-        // Always encoded in msgpack, for now.
-        // Maybe in the future the protocol will be in charge of verifying that the RPC call data matched the definition
-        $this->protocol = new JsonProtocol();
+        // Always encoded in JSON, for now.
+        $this->encoder = new JsonEncoder();
 
         // On the server side
         $this->handler = new MyServiceHandler();

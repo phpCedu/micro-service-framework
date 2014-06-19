@@ -8,7 +8,8 @@
     },
     'reverse': {
         'type': 'string',
-        // problem is, structs aren't ordered
+        // structs aren't ordered, so need to use arrays
+        // but how do optional params?
         'argNames': ['name'],
         'argTypes': ['string']
     }
