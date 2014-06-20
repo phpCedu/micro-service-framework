@@ -162,19 +162,6 @@ class BaseServer {
 
             // Who's in charge of encoding?
             $response->encodeUsing($this->service->encoder);
-
-            // Merge in OOB data ... but maybe a Filter should be in charge of this ...
-            // Perhaps it should copy OOB from request, and amend to response on the way out.
-            // Nevermind, that would take care of nested RPC calls
-            foreach ($this->oob() as $key => $value) {
-                if (is_array($value)) {
-                    foreach ($value as $v) {
-                        $response->oob($key, $v);
-                    }
-                } else {
-                    $response->oob($key, $value);
-                }
-            }
         }
         
         // Use the $i from the above loop to loop backwards from where we left off
@@ -190,20 +177,6 @@ class BaseServer {
         return $this->outTransport->write($response);
     }
 
-    // Don't like this being here, maybe it can be done better
-    public function clientResponse($response) {
-        // Bubble up some things
-        foreach ($response->oob() as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $v) {
-                    $this->oob($key, $v);
-                }
-            } else {
-                $this->oob($key, $value);
-            }
-        }
-    }
-
     public function oob($key=null, $value=null) {
         if ($key == null) {
             return $this->_oob;
@@ -211,16 +184,7 @@ class BaseServer {
         if ($value == null) {
             return $this->_oob[$key];
         }
-        if (isset($this->_oob[$key])) {
-            if (!is_array($this->_oob[$key])) {
-                $this->_oob[$key] = array(
-                    $this->_oob[$key]
-                );
-            }
-            $this->_oob[$key][] = $value;
-        } else {
-            $this->_oob[$key] = $value;
-        }
+        $this->_oob[$key] = $value;
     }
 }
 
@@ -256,16 +220,6 @@ class BaseClient {
     public $request;
     public $response;
 
-    // If this client is running within a server instance, tell that server
-    // bubble up stuff
-    protected function gotResponse($response) {
-        $server = BaseServer::context();
-        if ($server) {
-            // A Server instance exists, tell it about our response so it can pull in the OOB data
-            $server->clientResponse($response);
-        }
-    }
-
     public function __call($name, $args) {
         $service = $this->service;
         $transport = $service->transport;
@@ -295,7 +249,6 @@ class BaseClient {
         // Get response
         $response = $transport->read();
         $response->decodeUsing($encoder);
-        $this->gotResponse($response);
 
         // For posterity
         $this->request = $request;
@@ -388,13 +341,7 @@ class HTTPTransport extends BaseTransport {
 
     protected function writeOOB($oob) {
         foreach ($oob as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $v) {
-                    header('HTTP_Z_' . $key . ':' . $v, false);
-                }
-            } else {
-                header('HTTP_Z_' . $key . ':' . $value, false);
-            }
+            header('HTTP_Z_' . $key . ':' . $value, false);
         }
     }
 }
@@ -535,22 +482,13 @@ class HTTPRequestResponse extends BaseRequestResponse {
     protected $_oob = array();
 
     public function oob($key=null, $value=null) {
-        if ($key == null) {
+        if (is_null($key)) {
             return $this->_oob;
         }
-        if ($value == null) {
+        if (is_null($value)) {
             return $this->_oob[$key];
         }
-        if (isset($this->_oob[$key])) {
-            if (!is_array($this->_oob[$key])) {
-                $this->_oob[$key] = array(
-                    $this->_oob[$key]
-                );
-            }
-            $this->_oob[$key][] = $value;
-        } else {
-            $this->_oob[$key] = $value;
-        }
+        $this->_oob[$key] = $value;
     }
 }
 
