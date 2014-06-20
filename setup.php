@@ -144,15 +144,16 @@ class BaseServer {
             // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
             if ($this->valid($rpc, $args, $response)) {
                 $return_value = call_user_func_array(array($this->service->handler, $rpc), $args);
-                if ($method_definition[0] == 'null') {
+                $return_type = $this->service->definition[$rpc][0];
+                if ($return_type == 'null') {
                     if (!is_null($return_value)) {
                         // FAIL
                     }
-                } elseif ($method_definition[0] == 'string') {
+                } elseif ($return_type == 'string') {
                     if (!is_string($return_value)) {
                         // FAIL
                     }
-                } elseif ($method_definition[0] == 'int32') {
+                } elseif ($return_type == 'int32') {
                     if (!is_int($return_value)) {
                         // FAIL
                     }
@@ -455,7 +456,7 @@ class BaseRequestResponse {
         $this->args = $data['args'];
         if (array_key_exists('errors', $data)) {
             $this->errors = $data['errors'];
-        } else {
+        } elseif (array_key_exists('body', $data)) {
             $this->body = $data['body'];
         }
     }
