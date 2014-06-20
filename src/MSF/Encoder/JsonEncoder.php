@@ -1,7 +1,7 @@
 <?php
-namespace MSF;
+namespace MSF\Encoder;
 
-class JsonEncoder extends Encoder {
+class JsonEncoder extends \MSF\Encoder {
     public function encode($data) {
         return json_encode($data);
     }

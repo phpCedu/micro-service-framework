@@ -32,7 +32,11 @@ class Client {
         $request->encodeUsing($encoder, true);
 
         $this->preRequest($request);
-        $transport->write($request);
+        try {
+            $transport->write($request);
+        } catch (\Exception $e) {
+            die($e->getMessage());
+        }
         // Get response
         $response = $transport->read();
         $response->decodeUsing($encoder);

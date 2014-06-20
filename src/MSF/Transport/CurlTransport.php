@@ -1,7 +1,7 @@
 <?php
 namespace MSF\Transport;
 
-class CurlTransport extends HTTPTransport {
+class CurlTransport extends \MSF\Transport\HTTPTransport {
     protected $response;
 
     public function read() {
@@ -27,10 +27,10 @@ class CurlTransport extends HTTPTransport {
 
         if($response === false) {
             $e = curl_error($ch);
-            // prepare error response
+            throw new \Exception('Request failed: ' . $e);
         } else {
             // Leverage the HTTPTransport to parse the HTTP response
-            $t = new HTTPTransport($this->service);
+            $t = new \MSF\Transport\HTTPTransport($this->service);
             $t->data($response);
             $this->response = $t;
         }

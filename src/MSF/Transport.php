@@ -14,10 +14,10 @@ class Transport {
     }
 
     public function newRequest() {
-        return new RequestResponse();
+        return new \MSF\RequestResponse();
     }
     public function newResponse() {
-        return new RequestResponse();
+        return new \MSF\RequestResponse();
     }
     public function oob($key = null, $value = null) {
         // BaseTransport doesn't support OOB

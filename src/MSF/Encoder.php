@@ -1,7 +1,7 @@
 <?php
 namespace MSF;
 
-class Encoder implements EncoderInterface {
+class Encoder implements \MSF\EncoderInterface {
     // encode / decode
     public function encode($data) {
         return $data;

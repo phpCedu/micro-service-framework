@@ -6,7 +6,7 @@ class Service {
     public $transport;
     public $encoder; // Can encode as JSON, or MsgPack, etc
     public $definition; // Interface definition for this service
-    public static $clientClass = 'MSF\\Client';
+    public static $clientClass = '\\MSF\\Client';
 
     // Maybe it'd be better to accept a client class as a param,
     // that way we can override this method, pass our own to this parent method

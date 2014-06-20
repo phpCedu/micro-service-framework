@@ -1,7 +1,7 @@
 <?php
 namespace MSF\RequestResponse;
 
-class HTTPRequestResponse extends MSF\RequestResponse {
+class HTTPRequestResponse extends \MSF\RequestResponse {
     // associative
     public $headers = array();
 

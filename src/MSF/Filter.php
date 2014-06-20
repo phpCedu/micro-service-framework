@@ -5,10 +5,10 @@ namespace MSF;
 // BUT FILTERS SHOULDN'T BE ALLOWED TO MODIFY THE REQUEST OR RESPONSE BODY
 class Filter {
     // Should return some instance of BaseResponse
-    public function request(RequestResponse $request) {
+    public function request(\MSF\RequestResponse $request) {
         return $request;
     }
-    public function response(RequestResponse $response) {
+    public function response(\MSF\RequestResponse $response) {
         return $response;
     }
 }

@@ -3,9 +3,9 @@ namespace MSF\Transport;
 
 // This class is only concerned with reading the HTTP body ... it assumes the HTTP headers have already been parsed
 // In the case of most PHP requests, this will be the case
-class PartialHTTPTransport extends HTTPTransport {
+class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
     public function read() {
-        $r = new HTTPRequestResponse();
+        $r = new \MSF\RequestResponse\HTTPRequestResponse();
         // headers should already be in $_SERVER, now just extract the ones that pertain to us
         // Loop through $_SERVER looking for headers with our special "HTTP_ABC123" prefix
         // $r->headers['ONE'] = 'TWO';

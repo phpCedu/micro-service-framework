@@ -1,13 +1,17 @@
 <?php
-use MSF;
+
+include('Loader.php');
+$loader = new Loader();
+$loader->basePSR0 = __DIR__ . DIRECTORY_SEPARATOR . '../src/';
+spl_autoload_register(array($loader, 'loadClass'));
 
 // IMPLEMENTATIONS
 
-class MyServer extends Server {
+class MyServer extends MSF\Server {
     // Nothing custom yet
 }
 
-class MsgPackEncoder extends Encoder {
+class MsgPackEncoder extends MSF\Encoder {
     public function encode($data) {
         return msgpack_pack($data);
     }
@@ -16,17 +20,17 @@ class MsgPackEncoder extends Encoder {
     }
 }
 
-class MyFilterDoesProfiling extends Filter {
+class MyFilterDoesProfiling extends \MSF\Filter {
     protected $started;
     protected $rpc;
     protected $profile;
-    public function request(RequestResponse $request) {
+    public function request(\MSF\RequestResponse $request) {
         $this->rpc = $request->rpc;
         $this->started = microtime(true);
         $this->profile = $request->oob('profile');
         return $request;
     }
-    public function response($response) {
+    public function response(\MSF\RequestResponse $response) {
         $this->profile['profile'] = array(
             'server.rpc' => $this->rpc,
             'start' => $this->started,
@@ -41,14 +45,14 @@ class MyFilterDoesProfiling extends Filter {
     }
 }
 
-class MyFilterConvertsRequest extends Filter {
-    public function request(HTTPRequestResponse $request) {
+class MyFilterConvertsRequest extends \MSF\Filter {
+    public function request(\MSF\RequestResponse\HTTPRequestResponse $request) {
         // Wrap it like an onion
         $req = new HTTPRequestResponse2($request);
         return $req;
     }
 }
-class HTTPRequestResponse2 extends HTTPRequestResponse {
+class HTTPRequestResponse2 extends \MSF\RequestResponse\HTTPRequestResponse {
 }
 
 class MyServiceHandler {
@@ -68,7 +72,7 @@ class MyServiceHandler {
     }
 }
 
-class MyService extends Service {
+class MyService extends MSF\Service {
     public $endpoint = 'http://localhost:9999/index.php';
     public $transport;
     public $encoder;
@@ -90,9 +94,9 @@ class MyService extends Service {
     );
 
     public function __construct() {
-        $this->transport = new CurlTransport($this);
+        $this->transport = new \MSF\Transport\CurlTransport($this);
         // Always encoded in JSON, for now.
-        $this->encoder = new JsonEncoder();
+        $this->encoder = new \MSF\Encoder\JsonEncoder();
 
         // On the server side
         $this->handler = new MyServiceHandler();
@@ -101,7 +105,7 @@ class MyService extends Service {
 class MyService2 extends MyService {
     public $endpoint = 'http://localhost:9998/index.php';
 }
-class MyClient extends Client {
+class MyClient extends \MSF\Client {
     public function preRequest($request) {
         $oob = array(
             'client.rpc' => $request->rpc,

@@ -1,7 +1,7 @@
 <?php
 namespace MSF\Transport;
 
-class HTTPTransport extends Transport {
+class HTTPTransport extends \MSF\Transport {
     protected $socket;
     protected $data;
     
@@ -12,7 +12,7 @@ class HTTPTransport extends Transport {
         $this->data = $data;
     }
     public function read() {
-        $r = new HTTPRequestResponse();
+        $r = new \MSF\RequestResponse\HTTPRequestResponse();
         if ($this->data) {
         } elseif ($this->socket) {
         }
@@ -41,10 +41,10 @@ class HTTPTransport extends Transport {
     }
 
     public function newRequest() {
-        return new HTTPRequestResponse();
+        return new \MSF\RequestResponse\HTTPRequestResponse();
     }
     public function newResponse() {
-        return new HTTPRequestResponse();
+        return new \MSF\RequestResponse\HTTPRequestResponse();
     }
 
     protected function writeOOB($oob) {
