@@ -66,6 +66,47 @@ class BaseServer {
         $this->service = $service;
         static::$instance = $this;
     }
+
+    public function valid($rpc, $args, $response) {
+        $service = $this->service;
+        if (!isset($service->definition[$rpc])) {
+            // Method doesn't exist
+        }
+        $method_params = $service->definition[$rpc][1];
+        $method_types = $service->definition[$rpc][2];
+        $errors = array();
+        /*
+        Keep it simple for now:
+        - args are required
+        - do simple type checking
+        */
+        foreach ($method_params as $i => $name) {
+            if (!isset($args[ $name ])) {
+                // FAIL - Log the error
+                $errors[] = 'Param missing: ' . $name;
+                continue;
+            }
+            $val = $args[ $name ];
+            $type = $method_types[ $i ];
+            if ($type == 'string') {
+                if (!is_string($val)) {
+                    // Expected $i-th arg to be a string
+                    $errors[] = 'Should be string: ' . $name;
+                }
+            } elseif ($type == 'int32') {
+                if (!is_int($val)) {
+                    // Expected $i-th arg to be an integer
+                    $errors[] = 'Should be int32: ' . $name;
+                }
+            }
+        }
+
+        if ($errors) {
+            $response->errors = $errors;
+            return false;
+        }
+        return true;
+    }
     
     function run() {
         // Got request from transport
@@ -94,53 +135,30 @@ class BaseServer {
             // Get the response ready, so we can annotate it before filling the value
             $response = $this->outTransport->newResponse();
             $response->rpc = $request->rpc;
+            $response->args = $request->args;
         
             // Dispatch to our implementation
             if (!is_array($args)) {
                 $args = array();
             }
             // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
-            if (!isset($this->definition['methods'][$rpc])) {
-                // Method doesn't exist
-            }
-            $method_definition = $this->definition['methods'][$rpc];
-            /*
-            Keep it simple for now:
-            - args are required
-            - do simple type checking
-            */
-            foreach ($method_definition[1] as $i => $type) {
-                $val = $args[$i];
-                if (is_null($val)) {
-                    // FAIL
-                    // Log the error
-                    continue;
-                }
-                if ($type == 'string') {
-                    if (!is_string($val)) {
-                        // Expected $i-th arg to be a string
+            if ($this->valid($rpc, $args, $response)) {
+                $return_value = call_user_func_array(array($this->service->handler, $rpc), $args);
+                if ($method_definition[0] == 'null') {
+                    if (!is_null($return_value)) {
+                        // FAIL
                     }
-                } elseif ($type == 'int32') {
-                    if (!is_int($val)) {
-                        // Expected $i-th arg to be an integer
+                } elseif ($method_definition[0] == 'string') {
+                    if (!is_string($return_value)) {
+                        // FAIL
+                    }
+                } elseif ($method_definition[0] == 'int32') {
+                    if (!is_int($return_value)) {
+                        // FAIL
                     }
                 }
+                $response->body = $return_value;
             }
-            $return_value = call_user_func_array(array($this->service->handler, $rpc), $args);
-            if ($method_definition[0] == 'null') {
-                if (!is_null($return_value)) {
-                    // FAIL
-                }
-            } elseif ($method_definition[0] == 'string') {
-                if (!is_string($return_value)) {
-                    // FAIL
-                }
-            } elseif ($method_definition[0] == 'int32') {
-                if (!is_int($return_value)) {
-                    // FAIL
-                }
-            }
-            $response->body = $return_value;
 
             // Who's in charge of encoding?
             $response->encodeUsing($this->service->encoder);
@@ -210,7 +228,7 @@ class BaseServer {
 Perhaps this is where RPC type checking should take place, but that requires us to define the service calls and types ...
 so that'll be a work in progress.
 */
-interface Encoder {
+interface EncoderInterface {
     public function encode($data);
     public function decode($data);
 }
@@ -255,8 +273,23 @@ class BaseClient {
         
         $request = $transport->newRequest();
         $request->rpc = $name;
-        $request->args = $args;
-        $request->encodeUsing($encoder);
+        // combine service's param names with the values into key/value pairs
+        // make sure $args is same size as definition
+        $names = $service->definition[ $name ][1];
+        if (sizeof($args) < sizeof($names)) {
+            $args = array_fill(
+                sizeof($args), 
+                sizeof($names) - sizeof($args),
+                null
+            );
+        }
+        //var_dump($names);var_dump($args);exit;
+        $request->args = array_combine(
+            $names,
+            $args
+        );
+        // Don't encode empty body
+        $request->encodeUsing($encoder, true);
 
         $transport->write($request);
         // Get response
@@ -397,7 +430,7 @@ class CurlTransport extends HTTPTransport {
     }
     public function write($r) {
         // Somehow need to get the service endpoint
-        $url = $r->service->endpoint;
+        $url = $this->service->endpoint;
         $ch = curl_init($url);
         if(!$ch) {
             die('Curl Error');
@@ -423,6 +456,7 @@ class BaseRequestResponse {
     // RPC related
     protected $rpc; // An array with class and method
     protected $args;
+    protected $errors;
     // Body
     protected $body;
     protected $encoded; // Transports only read/write encoded values
@@ -434,12 +468,18 @@ class BaseRequestResponse {
     }
 
     // Encode/Decode this request/response using the specified encoder 
-    public function encodeUsing($encoder) {
+    public function encodeUsing($encoder, $request = false) {
         $data = array(
             'rpc' => $this->rpc,
-            'args' => $this->args,
-            'body' => $this->body
+            'args' => $this->args
         );
+        if (!$request) {
+            if ($this->errors) {
+                $data['errors'] = $this->errors;
+            } else {
+                $data['body'] = $this->body;
+            }
+        }
         $this->encoded = $encoder->encode($data);
     }
     public function decodeUsing($encoder) {
@@ -448,7 +488,11 @@ class BaseRequestResponse {
         // Request values get annotated with the RPC call, arguments, etc
         $this->rpc = $data['rpc'];
         $this->args = $data['args'];
-        $this->body = $data['body'];
+        if (array_key_exists('errors', $data)) {
+            $this->errors = $data['errors'];
+        } else {
+            $this->body = $data['body'];
+        }
     }
 
     public function oob($key = null, $value = null) {
@@ -585,17 +629,17 @@ class MyService extends BaseService {
     public $encoder;
 
     public $definition = array(
-        'types' => array(
-        ),
-        'methods' => array(
-            'reverse' => array(
-                // return type
-                'string',
-                // param types
-                array(
-                    'string'
-                ),
-            )
+        'reverse' => array(
+            // return type
+            'string',
+            // param names
+            array(
+                'input'
+            ),
+            // associated param types
+            array(
+                'string'
+            ),
         )
     );
 
