@@ -31,15 +31,14 @@ class MyFilterDoesProfiling extends \MSF\Filter {
         return $request;
     }
     public function response(\MSF\RequestResponse $response) {
-        $this->profile['profile'] = array(
-            'server.rpc' => $this->rpc,
-            'start' => $this->started,
-            'end' => microtime(true),
-            'host' => gethostname()
-        );
         $response->oob(
             'profile',
-            $this->profile
+            array(
+                'server.rpc' => $this->rpc,
+                'start' => $this->started,
+                'end' => microtime(true),
+                'host' => gethostname()
+            )
         );
         return $response;
     }
@@ -106,12 +105,20 @@ class MyService2 extends MyService {
     public $endpoint = 'http://localhost:9998/index.php';
 }
 class MyClient extends \MSF\Client {
+    protected $rpc;
     public function preRequest($request) {
+        $this->rpc = $request->rpc;
+        $this->started = microtime(true);
+    }
+    public function postResponse($response) {
         $oob = array(
-            'client.rpc' => $request->rpc,
-            'started' => microtime(true),
-            'host' => gethostname()
+            'client.rpc' => $this->rpc,
+            'started' => $this->started,
+            'ended' => microtime(true),
+            'host' => gethostname(),
+            'profile' => $response->oob('profile')
         );
-        $request->oob('profile', $oob);
+        // uhh, modifying a response is ugly
+        $response->oob('profile', $oob);
     }
 }
