@@ -46,7 +46,7 @@ class MyFilterDoesProfiling extends \MSF\Filter {
 }
 
 class MyFilterConvertsRequest extends \MSF\Filter {
-    public function request(\MSF\RequestResponse\HTTPRequestResponse $request) {
+    public function request(\MSF\RequestResponse $request) {
         // Wrap it like an onion
         $req = new HTTPRequestResponse2($request);
         return $req;

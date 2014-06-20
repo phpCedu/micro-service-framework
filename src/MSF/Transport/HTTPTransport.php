@@ -31,7 +31,7 @@ class HTTPTransport extends \MSF\Transport {
         return $r;
     }
 
-    public function write($r) {
+    public function write(\MSF\RequestResponse $r) {
         // Write out $this->headers
         // Now write out the response annotations as headers
         $this->writeOOB($r->oob());

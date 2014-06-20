@@ -21,7 +21,7 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
         return $r;
     }
 
-    public function write($r) {
+    public function write(\MSF\RequestResponse $r) {
         // Write out non-annotation headers
         // then
         // Write out the response annotations as headers

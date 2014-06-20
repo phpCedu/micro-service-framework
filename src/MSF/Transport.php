@@ -10,7 +10,7 @@ class Transport {
 
     public function read() {
     }
-    public function write() {
+    public function write(\MSF\RequestResponse $r) {
     }
 
     public function newRequest() {
