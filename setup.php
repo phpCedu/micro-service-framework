@@ -245,15 +245,22 @@ class BaseClient {
         // Don't encode empty body
         $request->encodeUsing($encoder, true);
 
+        $this->preRequest($request);
         $transport->write($request);
         // Get response
         $response = $transport->read();
         $response->decodeUsing($encoder);
+        $this->postResponse($response);
 
         // For posterity
         $this->request = $request;
         $this->response = $response;
         return $response->body;
+    }
+
+    protected function preRequest($request) {
+    }
+    protected function postResponse($response) {
     }
 }
 
@@ -315,9 +322,9 @@ class HTTPTransport extends BaseTransport {
         foreach (explode("\r\n", $headers) as $header) {
             if (strncasecmp($header, 'HTTP_Z_', 7) == 0) {
                 $colon = strpos($header, ':');
-                $key = trim(substr($header, 7, $colon-7));
+                $key = strtolower(trim(substr($header, 7, $colon-7)));
                 $value = trim(substr($header, $colon+1));
-                $r->oob($key, $value);
+                $r->oob($key, json_decode($value, true));
             }
         } // need to convert to key=>value too
         return $r;
@@ -341,7 +348,7 @@ class HTTPTransport extends BaseTransport {
 
     protected function writeOOB($oob) {
         foreach ($oob as $key => $value) {
-            header('HTTP_Z_' . $key . ':' . $value, false);
+            header('HTTP_Z_' . strtoupper($key) . ':' . json_encode($value));
         }
     }
 }
@@ -356,6 +363,12 @@ class PartialHTTPTransport extends HTTPTransport {
         
         // just read the remainder of the body
         $r->encoded = file_get_contents('php://input');
+        foreach ($_SERVER as $key => $value) {
+            if (strncasecmp($key, 'HTTP_Z_', 7) == 0) {
+                $key = strtolower(substr($key, 7));
+                $r->oob($key, json_decode($value, true));
+            }
+        }
         return $r;
     }
 
@@ -385,6 +398,11 @@ class CurlTransport extends HTTPTransport {
         curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
         curl_setopt($ch, CURLOPT_POSTFIELDS, $r->encoded);
+        $headers = array();
+        foreach ($r->oob() as $key => $value) {
+            $headers[] = 'Z_' . $key . ':' . json_encode($value);
+        }
+        curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
         $response = curl_exec($ch); //execute post and get results
 
         if($response === false) {
@@ -508,21 +526,27 @@ class MsgPackEncoder extends BaseEncoder {
     }
 }
 
-class MyFilterDoesMetrics extends Filter {
+class MyFilterDoesProfiling extends Filter {
     protected $started;
     protected $rpc;
+    protected $profile;
     public function request(BaseRequestResponse $request) {
         $this->rpc = $request->rpc;
         $this->started = microtime(true);
+        $this->profile = $request->oob('profile');
         return $request;
     }
     public function response($response) {
-        $data = array(
+        $this->profile['profile'] = array(
+            'server.rpc' => $this->rpc,
             'start' => $this->started,
             'end' => microtime(true),
             'host' => gethostname()
         );
-        $response->oob($this->rpc, json_encode($data));
+        $response->oob(
+            'profile',
+            $this->profile
+        );
         return $response;
     }
 }
@@ -535,13 +559,6 @@ class MyFilterConvertsRequest extends Filter {
     }
 }
 class HTTPRequestResponse2 extends HTTPRequestResponse {
-}
-
-class MyFilterAnnotatesResponseWithOOB extends Filter {
-    public function response(HTTPRequestResponse $response) {
-        $response->oob('OOB', 'oob');
-        return $response;
-    }
 }
 
 class MyServiceHandler {
@@ -565,6 +582,7 @@ class MyService extends BaseService {
     public $endpoint = 'http://localhost:9999/index.php';
     public $transport;
     public $encoder;
+    public static $clientClass = 'MyClient';
 
     public $definition = array(
         'reverse' => array(
@@ -593,4 +611,13 @@ class MyService extends BaseService {
 class MyService2 extends MyService {
     public $endpoint = 'http://localhost:9998/index.php';
 }
-
+class MyClient extends BaseClient {
+    public function preRequest($request) {
+        $oob = array(
+            'client.rpc' => $request->rpc,
+            'started' => microtime(true),
+            'host' => gethostname()
+        );
+        $request->oob('profile', $oob);
+    }
+}

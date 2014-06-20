@@ -17,8 +17,7 @@ $inTransport = $outTransport = new PartialHTTPTransport($service);
 $server->inTransport = $inTransport; // In transport determines the starting class of the request
 $server->outTransport = $outTransport; // Out transport determines the starting class of the response, I think ...
 
-$server->filters[] = new MyFilterDoesMetrics();
+$server->filters[] = new MyFilterDoesProfiling();
 $server->filters[] = new MyFilterConvertsRequest();
-$server->filters[] = new MyFilterAnnotatesResponseWithOOB();
 
 $server->run();
