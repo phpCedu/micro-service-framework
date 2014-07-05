@@ -4,9 +4,10 @@ namespace MSF;
 
 class Server {
     public $filters = array();
-    public $inTransport;
-    public $outTransport;
-    public $service; // Which Service is being served
+    protected $inTransport;
+    protected $outTransport;
+    protected $serviceClass; // Which Service is being served
+    protected $handler;
 
     protected $_oob = array();
     protected static $instance;
@@ -22,29 +23,29 @@ class Server {
     public static $encoder; // why this?
     public static $response;
 
-    public static function create($service) {
-        // what's the right way to do this again?
-        return new static($service);
-    }
-
     // So Client instances can check whether or not they're within a server context
     // or something
     public static function context() {
         return static::$instance;
     }
 
-    protected function __construct($service) {
-        $this->service = $service;
-        static::$instance = $this;
+    public function __construct($serviceClass, $handler) {
+        $this->serviceClass = $serviceClass;
+        $this->handler = $handler;
+
+        $transportClass = static::$transport;
+        $this->inTransport = new $transportClass();
+        $this->outTransport = new $transportClass();
     }
 
     public function valid($rpc, $args, $response) {
-        $service = $this->service;
-        if (!isset($service->definition[$rpc])) {
+        $serviceClass = $this->serviceClass;
+        $definition = $serviceClass::definition();
+        if (!isset($definition[$rpc])) {
             // Method doesn't exist
         }
-        $method_params = $service->definition[$rpc][1];
-        $method_types = $service->definition[$rpc][2];
+        $method_params = $definition[$rpc][1];
+        $method_types = $definition[$rpc][2];
         $errors = array();
         /*
         Keep it simple for now:
@@ -78,20 +79,19 @@ class Server {
         }
         return true;
     }
-    
-    function run() {
-        // Got request from transport
-        $request = $this->inTransport->read(); // What about failure to read, would a future help us here?
-        // Decode message body using this encoding 
-        $request->decodeUsing($this->service->encoder);
-        // Was there an error in decoding?
+
+    public function run() {
+        $serviceClass = $this->serviceClass;
+        $request = $this->inTransport->read();
+        $request->decodeUsing($serviceClass::encoder());
+        $response = $request->response;
         
         // Pass request to all the chained filters
         foreach ($this->filters as $i => $filter) {
             $request = $filter->request($request);
             // Is $request an instance of an error? ... If so, don't pass to any more filters
             if ($request instanceof Exception) { // Filters shouldn't return Exceptions, this is just an example
-                $response = $this->outTransport->newResponse();
+                //$response = $this->outTransport->newResponse();
                 // Annotate with error info ... who knows yet
                 // Unwind with a response
                 break;
@@ -104,7 +104,7 @@ class Server {
             $args = $request->args;
 
             // Get the response ready, so we can annotate it before filling the value
-            $response = $this->outTransport->newResponse();
+            //$response = $this->outTransport->newResponse();
             $response->rpc = $request->rpc;
             $response->args = $request->args;
         
@@ -113,9 +113,11 @@ class Server {
                 $args = array();
             }
             // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
+            $definition = $serviceClass::definition();
+        
             if ($this->valid($rpc, $args, $response)) {
-                $return_value = call_user_func_array(array($this->service->handler, $rpc), $args);
-                $return_type = $this->service->definition[$rpc][0];
+                $return_value = call_user_func_array(array($this->handler, $rpc), $args);
+                $return_type = $definition[$rpc][0];
                 if ($return_type == 'null') {
                     if (!is_null($return_value)) {
                         // FAIL
@@ -133,7 +135,7 @@ class Server {
             }
 
             // Who's in charge of encoding?
-            $response->encodeUsing($this->service->encoder);
+            $response->encodeUsing($serviceClass::encoder());
         }
         
         // Use the $i from the above loop to loop backwards from where we left off

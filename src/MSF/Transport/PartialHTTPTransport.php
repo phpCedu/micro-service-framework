@@ -18,6 +18,8 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
                 $r->oob($key, json_decode($value, true));
             }
         }
+
+        $r->response = new \MSF\RequestResponse\HTTPRequestResponse();
         return $r;
     }
 

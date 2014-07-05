@@ -10,8 +10,7 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
     }
     public function write(\MSF\RequestResponse $r) {
         // Somehow need to get the service endpoint
-        $url = $this->service->endpoint;
-        $ch = curl_init($url);
+        $ch = curl_init($this->endpoint);
         if(!$ch) {
             die('Curl Error');
         }
@@ -30,7 +29,7 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
             throw new \Exception('Request failed: ' . $e);
         } else {
             // Leverage the HTTPTransport to parse the HTTP response
-            $t = new \MSF\Transport\HTTPTransport($this->service);
+            $t = new \MSF\Transport\HTTPTransport($this->endpoint);
             $t->data($response);
             $this->response = $t;
         }

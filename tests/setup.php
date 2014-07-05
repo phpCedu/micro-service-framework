@@ -9,6 +9,7 @@ spl_autoload_register(array($loader, 'loadClass'));
 
 class MyServer extends MSF\Server {
     // Nothing custom yet
+    public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
 }
 
 class MsgPackEncoder extends MSF\Encoder {
@@ -72,12 +73,13 @@ class MyServiceHandler {
 }
 
 class MyService extends MSF\Service {
-    public $endpoint = 'http://localhost:9999/index.php';
-    public $transport;
-    public $encoder;
+    public static $endpoint = 'http://localhost:9999/index.php';
+    public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
+    public static $encoder = '\\MSF\\Encoder\\JsonEncoder';
     public static $clientClass = 'MyClient';
+    public static $serverClass = 'MyServer';
 
-    public $definition = array(
+    public static $definition = array(
         'reverse' => array(
             // return type
             'string',
@@ -91,18 +93,9 @@ class MyService extends MSF\Service {
             ),
         )
     );
-
-    public function __construct() {
-        $this->transport = new \MSF\Transport\CurlTransport($this);
-        // Always encoded in JSON, for now.
-        $this->encoder = new \MSF\Encoder\JsonEncoder();
-
-        // On the server side
-        $this->handler = new MyServiceHandler();
-    }
 }
 class MyService2 extends MyService {
-    public $endpoint = 'http://localhost:9998/index.php';
+    public static $endpoint = 'http://localhost:9998/index.php';
 }
 class MyClient extends \MSF\Client {
     protected $rpc;

@@ -14,7 +14,11 @@ class HTTPRequestResponse extends \MSF\RequestResponse {
             return $this->_oob;
         }
         if (is_null($value)) {
-            return $this->_oob[$key];
+            if (isset($this->_oob[$key])) {
+                return $this->_oob[$key];
+            } else {
+                return null;
+            }
         }
         $this->_oob[$key] = $value;
     }

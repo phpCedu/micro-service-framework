@@ -12,6 +12,8 @@ class RequestResponse {
     // Stuff to make Filters easier
     protected $parent;
 
+    protected $response;
+
     public function __construct($parent = null) {
         $this->parent = $parent;
     }

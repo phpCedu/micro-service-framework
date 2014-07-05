@@ -1,11 +1,11 @@
 <?php
 namespace MSF;
 
-class Transport {
-    public $service;
+abstract class Transport {
+    protected $endpoint;
 
-    public function __construct($service) {
-        $this->service = $service;
+    public function __construct($endpoint = null) {
+        $this->endpoint = $endpoint;
     }
 
     public function read() {
