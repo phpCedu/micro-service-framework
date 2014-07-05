@@ -48,9 +48,15 @@ class Server {
             $response->errors = $errors;
             return false;
         }
+        $args = array();
+        if (!array_key_exists(1, $definition[$rpc])) {
+            return $args;
+        }
+        if (!array_key_exists(2, $definition[$rpc])) {
+            $definition[$rpc][2] = array();
+        }
         $method_params = $definition[$rpc][1];
         $method_types = $definition[$rpc][2];
-        $args = array();
         /*
         Keep it simple for now:
         - args are required. later will default to null if not sent
@@ -127,10 +133,13 @@ class Server {
             // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
             $definition = $serviceClass::definition();
         
-            if ($args = $this->validRequest($request, $response)) {
+            // validRequest() returns prepared args array for call_user_func_array()
+            $args = $this->validRequest($request, $response);
+            if ($args !== false) {
                 try {
+                    // call_user_func_array() can return false for errors,
+                    // but that means RPC calls returning false would be ambiguous, so use exceptions
                     $return_value = call_user_func_array(array($this->handler, $rpc), $args);
-                    // if $return_value is false, might mean an error, but that sucks, so use exceptions
                 } catch (\Exception $e) {
                     $response->errors = array(
                         $e->getMessage()
@@ -138,17 +147,20 @@ class Server {
                 }
                 if (!$response->errors) {
                     $return_type = $definition[$rpc][0];
-                    if ($return_type == 'null') {
+                    if ($return_type === 'null') {
                         if (!is_null($return_value)) {
                             // FAIL
+                            $response->addError('RPC call was expected to return null');
                         }
-                    } elseif ($return_type == 'string') {
+                    } elseif ($return_type === 'string') {
                         if (!is_string($return_value)) {
                             // FAIL
+                            $response->addError('RPC call was expected to return a string');
                         }
-                    } elseif ($return_type == 'int32') {
+                    } elseif ($return_type === 'int32') {
                         if (!is_int($return_value)) {
                             // FAIL
+                            $response->addError('RPC call was expected to return an int');
                         }
                     }
                     $response->body = $return_value;

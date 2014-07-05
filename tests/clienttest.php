@@ -7,12 +7,19 @@ include('setup.php');
 $client = MyService::client();
 
 try {
-    $out = $client->reverse('hey', 1);
+    $out = $client->reverse('hey', 5);
     // Our custome MyClient class stores profiling data in the response, and makes the response publicly available
     var_dump($client->response->oob('profile'));
     var_dump($out);
 } catch (\Exception $e) {
-    var_dump($e);
+    echo implode("\r\n", $e->errors) . "\r\n";
+}
+
+try {
+    $out = $client->badReturn();
+    var_dump($out);
+} catch (\Exception $e) {
+    echo implode("\r\n", $e->errors) . "\r\n";
 }
 
 

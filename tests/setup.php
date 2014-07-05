@@ -73,6 +73,11 @@ class MyServiceHandler extends \MSF\ServiceHandler {
         }
         return $name;
     }
+
+    // Defined to return string
+    public function badReturn() {
+        return false;
+    }
 }
 
 class MyService extends MSF\Service {
@@ -104,6 +109,10 @@ class MyService extends MSF\Service {
                 'data'
             ),
             array('array')
+        ),
+
+        'badReturn' => array(
+            'string'
         )
     );
 }

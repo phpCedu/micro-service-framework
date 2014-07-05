@@ -5,7 +5,7 @@ class RequestResponse {
     // RPC related
     protected $rpc; // An array with class and method
     protected $args;
-    protected $errors;
+    public $errors = array();
     // Body
     protected $body;
     protected $encoded; // Transports only read/write encoded values
@@ -74,6 +74,10 @@ class RequestResponse {
     public function __set($name, $value) {
         // Need some checks here, to make sure we're only setting protected variables
         $this->$name = $value;
+    }
+
+    public function addError($error) {
+        $this->errors[] = $error;
     }
 }
 

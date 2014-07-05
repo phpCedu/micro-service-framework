@@ -20,11 +20,13 @@ abstract class Client {
         $request->rpc = $name;
 
         // prepare args key/value struct, leaving out null values
-        $names = $definition[ $name ][1];
         $mapped = array();
-        foreach ($args as $i => $value) {
-            if (!is_null($value)) {
-                $mapped[ $names[$i] ] = $value;
+        if (sizeof($definition[$name]) > 1) {
+            $names = $definition[ $name ][1];
+            foreach ($args as $i => $value) {
+                if (!is_null($value)) {
+                    $mapped[ $names[$i] ] = $value;
+                }
             }
         }
         $request->args = $mapped;
