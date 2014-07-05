@@ -12,7 +12,8 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
         // Somehow need to get the service endpoint
         $ch = curl_init($this->endpoint);
         if(!$ch) {
-            die('Curl Error');
+            $e = curl_error($ch);
+            throw new \Exception('Request failed: ' . $e);
         }
         curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
@@ -29,9 +30,8 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
             throw new \Exception('Request failed: ' . $e);
         } else {
             // Leverage the HTTPTransport to parse the HTTP response
-            $t = new \MSF\Transport\HTTPTransport($this->endpoint);
-            $t->data($response);
-            $this->response = $t;
+            $this->response = new \MSF\Transport\HTTPTransport($this->endpoint);
+            $this->response->data($response);
         }
     }
 }

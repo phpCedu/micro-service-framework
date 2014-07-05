@@ -22,11 +22,13 @@ abstract class Client {
         // make sure $args is same size as definition
         $names = $definition[ $name ][1];
         if (sizeof($args) < sizeof($names)) {
-            $args = array_fill(
-                sizeof($args), 
-                sizeof($names) - sizeof($args),
+            $args = array_pad(
+                $args,
+                sizeof($names), 
                 null
             );
+        } elseif (sizeof($args) > sizeof($names)) {
+            $args = array_slice($args, 0, sizeof($names));
         }
         $request->args = array_combine(
             $names,
@@ -40,12 +42,22 @@ abstract class Client {
         try {
             $this->transport->write($request);
         } catch (\Exception $e) {
-            die($e->getMessage());
+            throw $e;
         }
         // Get response
-        $response = $this->transport->read();
+        try {
+            $response = $this->transport->read();
+        } catch (\Exception $e) {
+            throw $e;
+        }
         $response->decodeUsing($this->encoder);
         $this->postResponse($response);
+        // Errors
+        if ($response->errors) {
+            $e = new \Exception('Errors with request');
+            $e->errors = $response->errors;
+            throw $e;
+        }
 
         return $response->body;
     }

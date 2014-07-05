@@ -8,9 +8,17 @@ abstract class Transport {
         $this->endpoint = $endpoint;
     }
 
+    /**
+     * @return \MSF\RequestResponse instance
+     */
     public function read() {
     }
-    public function write(\MSF\RequestResponse $r) {
+    /**
+     * @param \MSF\RequestResponse $request
+     * @return null
+     * @throws \Exception
+     */
+    public function write(\MSF\RequestResponse $request) {
     }
 
     public function newRequest() {

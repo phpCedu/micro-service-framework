@@ -55,7 +55,7 @@ class MyFilterConvertsRequest extends \MSF\Filter {
 class HTTPRequestResponse2 extends \MSF\RequestResponse\HTTPRequestResponse {
 }
 
-class MyServiceHandler {
+class MyServiceHandler extends \MSF\ServiceHandler {
     
     public function childReverse($name) {
         $service = new MyService2();
@@ -67,8 +67,11 @@ class MyServiceHandler {
     }
 
     // Need some type-checking on input params, right? or is that too tedious to do at this level?
-    public function reverse($name) {
-        return strrev($name);
+    public function reverse($name, $times = 1) {
+        for ($i = 0; $i < $times; $i++) {
+            $name = strrev($name);
+        }
+        return $name;
     }
 }
 
@@ -85,12 +88,23 @@ class MyService extends MSF\Service {
             'string',
             // param names
             array(
-                'input'
+                'input',
+                'times'
             ),
             // associated param types
             array(
-                'string'
+                'string',
+                'int32'
             ),
+        ),
+
+        'yessir' => array(
+            'array',
+            // param names
+            array(
+                'data'
+            ),
+            array('array')
         )
     );
 }

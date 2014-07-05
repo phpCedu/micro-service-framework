@@ -41,12 +41,15 @@ class Server {
     public function valid($rpc, $args, $response) {
         $serviceClass = $this->serviceClass;
         $definition = $serviceClass::definition();
+        $errors = array();
         if (!isset($definition[$rpc])) {
             // Method doesn't exist
+            $errors[] = $rps . ' RPC method does not exist';
+            $response->errors = $errors;
+            return false;
         }
         $method_params = $definition[$rpc][1];
         $method_types = $definition[$rpc][2];
-        $errors = array();
         /*
         Keep it simple for now:
         - args are required
@@ -69,6 +72,11 @@ class Server {
                 if (!is_int($val)) {
                     // Expected $i-th arg to be an integer
                     $errors[] = 'Should be int32: ' . $name;
+                }
+            } elseif ($type == 'array') {
+                if (!is_array($val)) {
+                    // Expected $i-th arg to be an integer
+                    $errors[] = 'Should be an array: ' . $name;
                 }
             }
         }
@@ -116,22 +124,31 @@ class Server {
             $definition = $serviceClass::definition();
         
             if ($this->valid($rpc, $args, $response)) {
-                $return_value = call_user_func_array(array($this->handler, $rpc), $args);
-                $return_type = $definition[$rpc][0];
-                if ($return_type == 'null') {
-                    if (!is_null($return_value)) {
-                        // FAIL
-                    }
-                } elseif ($return_type == 'string') {
-                    if (!is_string($return_value)) {
-                        // FAIL
-                    }
-                } elseif ($return_type == 'int32') {
-                    if (!is_int($return_value)) {
-                        // FAIL
-                    }
+                try {
+                    $return_value = call_user_func_array(array($this->handler, $rpc), $args);
+                    // if $return_value is false, might mean an error, but that sucks, so use exceptions
+                } catch (\Exception $e) {
+                    $response->errors = array(
+                        $e->getMessage()
+                    );
                 }
-                $response->body = $return_value;
+                if (!$response->errors) {
+                    $return_type = $definition[$rpc][0];
+                    if ($return_type == 'null') {
+                        if (!is_null($return_value)) {
+                            // FAIL
+                        }
+                    } elseif ($return_type == 'string') {
+                        if (!is_string($return_value)) {
+                            // FAIL
+                        }
+                    } elseif ($return_type == 'int32') {
+                        if (!is_int($return_value)) {
+                            // FAIL
+                        }
+                    }
+                    $response->body = $return_value;
+                }
             }
 
             // Who's in charge of encoding?

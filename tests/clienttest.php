@@ -6,7 +6,24 @@ include('setup.php');
 // Service knows where the endpoint is, which calls are available, which protocol, and which transport
 $client = MyService::client();
 
-//$out = $client->childReverse('Alan');
-$out = $client->reverse('hey');
+try {
+    $out = $client->reverse('hey');
+    var_dump($out);
+} catch (\Exception $e) {
+    var_dump($e);
+}
 
-var_dump($out);
+
+// More complex data types
+/*
+try {
+    $data = array(
+        'name' => 'Name',
+        'ids' => array(1,5,34,77)
+    );
+    $out = $client->yessir($data);
+    var_dump($out);
+} catch (\Exception $e) {
+    var_dump($e);
+}
+*/
