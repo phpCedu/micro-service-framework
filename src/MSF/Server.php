@@ -9,7 +9,6 @@ class Server {
     protected $serviceClass; // Which Service is being served
     protected $handler;
 
-    protected $_oob = array();
     protected static $instance;
     /*
     These are public and static because when a service call needs to make a nested
@@ -38,45 +37,58 @@ class Server {
         $this->outTransport = new $transportClass();
     }
 
-    public function valid($rpc, $args, $response) {
+    public function validRequest($request, $response) {
         $serviceClass = $this->serviceClass;
         $definition = $serviceClass::definition();
+        $rpc = $request->rpc;
         $errors = array();
-        if (!isset($definition[$rpc])) {
+        if (!array_key_exists($rpc, $definition)) {
             // Method doesn't exist
-            $errors[] = $rps . ' RPC method does not exist';
+            $errors[] = $rpc . ' RPC method does not exist';
             $response->errors = $errors;
             return false;
         }
         $method_params = $definition[$rpc][1];
         $method_types = $definition[$rpc][2];
+        $args = array();
         /*
         Keep it simple for now:
-        - args are required
+        - args are required. later will default to null if not sent
         - do simple type checking
         */
         foreach ($method_params as $i => $name) {
-            if (!isset($args[ $name ])) {
+            // Default to null?
+            if (!array_key_exists($name, $request->args)) {
                 // FAIL - Log the error
                 $errors[] = 'Param missing: ' . $name;
+                $args[] = null;
                 continue;
             }
-            $val = $args[ $name ];
+            $val = $request->args[ $name ];
             $type = $method_types[ $i ];
             if ($type == 'string') {
                 if (!is_string($val)) {
                     // Expected $i-th arg to be a string
                     $errors[] = 'Should be string: ' . $name;
+                    $args[] = null;
+                } else {
+                    $args[] = $val;
                 }
             } elseif ($type == 'int32') {
                 if (!is_int($val)) {
                     // Expected $i-th arg to be an integer
                     $errors[] = 'Should be int32: ' . $name;
+                    $args[] = null;
+                } else {
+                    $args[] = $val;
                 }
             } elseif ($type == 'array') {
                 if (!is_array($val)) {
                     // Expected $i-th arg to be an integer
                     $errors[] = 'Should be an array: ' . $name;
+                    $args[] = null;
+                } else {
+                    $args[] = $val;
                 }
             }
         }
@@ -85,7 +97,7 @@ class Server {
             $response->errors = $errors;
             return false;
         }
-        return true;
+        return $args;
     }
 
     public function run() {
@@ -107,23 +119,15 @@ class Server {
         }
         
         if (!($request instanceof Exception)) {
-            // Now dispatch?
-            $rpc = $request->rpc;
-            $args = $request->args;
-
             // Get the response ready, so we can annotate it before filling the value
             //$response = $this->outTransport->newResponse();
-            $response->rpc = $request->rpc;
+            $rpc = $response->rpc = $request->rpc;
             $response->args = $request->args;
         
-            // Dispatch to our implementation
-            if (!is_array($args)) {
-                $args = array();
-            }
             // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
             $definition = $serviceClass::definition();
         
-            if ($this->valid($rpc, $args, $response)) {
+            if ($args = $this->validRequest($request, $response)) {
                 try {
                     $return_value = call_user_func_array(array($this->handler, $rpc), $args);
                     // if $return_value is false, might mean an error, but that sucks, so use exceptions
@@ -166,16 +170,6 @@ class Server {
         // This returns bytes written, but we don't need that here
         $this->outTransport->write($response);
         return true;
-    }
-
-    public function oob($key=null, $value=null) {
-        if ($key == null) {
-            return $this->_oob;
-        }
-        if ($value == null) {
-            return $this->_oob[$key];
-        }
-        $this->_oob[$key] = $value;
     }
 }
 

@@ -18,22 +18,16 @@ abstract class Client {
         
         $request = $this->transport->newRequest();
         $request->rpc = $name;
-        // combine service's param names with the values into key/value pairs
-        // make sure $args is same size as definition
+
+        // prepare args key/value struct, leaving out null values
         $names = $definition[ $name ][1];
-        if (sizeof($args) < sizeof($names)) {
-            $args = array_pad(
-                $args,
-                sizeof($names), 
-                null
-            );
-        } elseif (sizeof($args) > sizeof($names)) {
-            $args = array_slice($args, 0, sizeof($names));
+        $mapped = array();
+        foreach ($args as $i => $value) {
+            if (!is_null($value)) {
+                $mapped[ $names[$i] ] = $value;
+            }
         }
-        $request->args = array_combine(
-            $names,
-            $args
-        );
+        $request->args = $mapped;
 
         // Don't encode empty body
         $request->encodeUsing($this->encoder, true);
