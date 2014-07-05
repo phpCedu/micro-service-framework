@@ -2,7 +2,7 @@
 namespace MSF\Encoder;
 
 // TODO - implement me
-class MsgPackEncoder extends \MSF\Encoder {
+class MsgPackEncoder implements \MSF\EncoderInterface {
     public function encode($data) {
         throw new \Exception('MsgPackEncoder not yet implemented');
         return null;

@@ -19,7 +19,7 @@ class RequestResponse {
     }
 
     // Encode/Decode this request/response using the specified encoder 
-    public function encodeUsing($encoder, $request = false) {
+    public function encodeUsing(\MSF\EncoderInterface $encoder, $request = false) {
         $data = array(
             'rpc' => $this->rpc,
             'args' => $this->args
@@ -33,7 +33,7 @@ class RequestResponse {
         }
         $this->encoded = $encoder->encode($data);
     }
-    public function decodeUsing($encoder) {
+    public function decodeUsing(\MSF\EncoderInterface $encoder) {
         $data = $encoder->decode($this->encoded);
         // Do we need to store the decoded body in $request->body?
         // Request values get annotated with the RPC call, arguments, etc
