@@ -163,9 +163,9 @@ class Server {
             $response = $filter->response($response);
         }
         
-        // Just in case our transport is simply a buffer, we should return the body
-        // (yuck)
-        return $this->outTransport->write($response);
+        // This returns bytes written, but we don't need that here
+        $this->outTransport->write($response);
+        return true;
     }
 
     public function oob($key=null, $value=null) {

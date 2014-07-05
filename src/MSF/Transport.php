@@ -15,7 +15,7 @@ abstract class Transport {
     }
     /**
      * @param \MSF\RequestResponse $request
-     * @return null
+     * @return int - bytes written
      * @throws \Exception
      */
     public function write(\MSF\RequestResponse $request) {

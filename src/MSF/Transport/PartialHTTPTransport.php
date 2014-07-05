@@ -1,8 +1,8 @@
 <?php
 namespace MSF\Transport;
 
-// This class is only concerned with reading the HTTP body ... it assumes the HTTP headers have already been parsed
-// In the case of most PHP requests, this will be the case
+// This class assumes headers have been parsed into $_SERVER and the HTTP body is in "php://input"
+// It writes out similarly ... echoing the body and using header()
 class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
     public function read() {
         $r = new \MSF\RequestResponse\HTTPRequestResponse();
@@ -30,6 +30,13 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
         $this->writeOOB($r->oob());
 
         echo $r->encoded;
+        return strlen($r->encoded);
+    }
+
+    protected function writeOOB($oob) {
+        foreach ($oob as $key => $value) {
+            header('HTTP_Z_' . strtoupper($key) . ':' . json_encode($value));
+        }
     }
 }
 

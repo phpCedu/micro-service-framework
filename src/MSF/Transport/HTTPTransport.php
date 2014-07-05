@@ -31,6 +31,7 @@ class HTTPTransport extends \MSF\Transport {
         return $r;
     }
 
+    // TODO - Not implemented yet
     public function write(\MSF\RequestResponse $r) {
         // Write out $this->headers
         // Now write out the response annotations as headers
@@ -38,6 +39,8 @@ class HTTPTransport extends \MSF\Transport {
        
         // Now write the response body
         // fwrite($this->socket, $r->encoded);
+        // 
+        return 0;
     }
 
     public function newRequest() {
@@ -48,9 +51,6 @@ class HTTPTransport extends \MSF\Transport {
     }
 
     protected function writeOOB($oob) {
-        foreach ($oob as $key => $value) {
-            header('HTTP_Z_' . strtoupper($key) . ':' . json_encode($value));
-        }
     }
 }
 

@@ -15,6 +15,7 @@ abstract class Service {
         $class = static::$clientClass;
         return new $class(
             get_called_class(),
+            // TODO - This transport probably shouldn't be hard-coded
             new \MSF\Transport\CurlTransport(static::$endpoint),
             static::encoder()
         );
@@ -22,11 +23,6 @@ abstract class Service {
     public static function server($handler) {
         $class = static::$serverClass;
         return new $class(get_called_class(), $handler);
-    }
-
-    public static function transport() {
-        $className = static::$transport;
-        return new $className(static::$endpoint);
     }
     public static function encoder() {
         $className = static::$encoder;

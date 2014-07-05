@@ -8,7 +8,7 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
         // read() makes no sense for Curl ... once we write, we automatially read too
         return $this->response->read();
     }
-    public function write(\MSF\RequestResponse $r) {
+    public function write(\MSF\RequestResponse $request) {
         // Somehow need to get the service endpoint
         $ch = curl_init($this->endpoint);
         if(!$ch) {
@@ -17,9 +17,9 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
         }
         curl_setopt($ch, CURLOPT_HEADER, 1); // set to 0 to eliminate header info from response
         curl_setopt($ch, CURLOPT_RETURNTRANSFER, 1); // Returns response data instead of TRUE(1)
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $r->encoded);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, $request->encoded);
         $headers = array();
-        foreach ($r->oob() as $key => $value) {
+        foreach ($request->oob() as $key => $value) {
             $headers[] = 'Z_' . $key . ':' . json_encode($value);
         }
         curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
@@ -29,10 +29,13 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
             $e = curl_error($ch);
             throw new \Exception('Request failed: ' . $e);
         } else {
+            // Since cURL returns the response right-away, save it for later
+            // ... will be returned by read()
             // Leverage the HTTPTransport to parse the HTTP response
             $this->response = new \MSF\Transport\HTTPTransport($this->endpoint);
             $this->response->data($response);
         }
+        return strlen($request->encoded);
     }
 }
 

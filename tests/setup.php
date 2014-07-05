@@ -8,19 +8,18 @@ spl_autoload_register(array($loader, 'loadClass'));
 // IMPLEMENTATIONS
 
 class MyServer extends MSF\Server {
-    // Nothing custom yet
+    // TODO - Fix this
     public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
-}
 
-class MsgPackEncoder extends MSF\Encoder {
-    public function encode($data) {
-        return msgpack_pack($data);
-    }
-    public function decode($data) {
-        return msgpack_unpack($data);
+    public function __construct($serviceClass, $handler) {
+        parent::__construct($serviceClass, $handler);
+        // Set up default filters
+        $this->filters[] = new MyFilterDoesProfiling();
+        $this->filters[] = new MyFilterConvertsRequest();
     }
 }
 
+// Server-side filters
 class MyFilterDoesProfiling extends \MSF\Filter {
     protected $started;
     protected $rpc;
@@ -44,7 +43,6 @@ class MyFilterDoesProfiling extends \MSF\Filter {
         return $response;
     }
 }
-
 class MyFilterConvertsRequest extends \MSF\Filter {
     public function request(\MSF\RequestResponse $request) {
         // Wrap it like an onion
@@ -55,8 +53,9 @@ class MyFilterConvertsRequest extends \MSF\Filter {
 class HTTPRequestResponse2 extends \MSF\RequestResponse\HTTPRequestResponse {
 }
 
+// The actual service implementation is done inside a ServiceHandler
 class MyServiceHandler extends \MSF\ServiceHandler {
-    
+    /*
     public function childReverse($name) {
         $service = new MyService2();
         $client = $service->client();
@@ -65,6 +64,7 @@ class MyServiceHandler extends \MSF\ServiceHandler {
         $name = $client->reverse($name);
         return $client->reverse($name);
     }
+    */
 
     // Need some type-checking on input params, right? or is that too tedious to do at this level?
     public function reverse($name, $times = 1) {
@@ -77,7 +77,6 @@ class MyServiceHandler extends \MSF\ServiceHandler {
 
 class MyService extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
-    public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
     public static $encoder = '\\MSF\\Encoder\\JsonEncoder';
     public static $clientClass = 'MyClient';
     public static $serverClass = 'MyServer';
@@ -111,8 +110,13 @@ class MyService extends MSF\Service {
 class MyService2 extends MyService {
     public static $endpoint = 'http://localhost:9998/index.php';
 }
+
 class MyClient extends \MSF\Client {
     protected $rpc;
+    // Expose the response so we can view profiling data
+    public $response;
+
+    // These methods allow us to do profiling on client requests
     public function preRequest($request) {
         $this->rpc = $request->rpc;
         $this->started = microtime(true);
@@ -127,5 +131,6 @@ class MyClient extends \MSF\Client {
         );
         // uhh, modifying a response is ugly
         $response->oob('profile', $oob);
+        $this->response = $response;
     }
 }
