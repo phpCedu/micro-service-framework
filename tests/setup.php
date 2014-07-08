@@ -142,7 +142,7 @@ class MyNewerService extends MSF\Service {
             // associated param types
             array(
                 'string',
-                'int32'
+                'null-int32'
             ),
         ),
         'badReturn' => array(
@@ -153,11 +153,7 @@ class MyNewerService extends MSF\Service {
 
 // The actual service implementation is done inside a ServiceHandler
 class MyNewerServiceHandler extends \MSF\ServiceHandler {
-    public function reverse($name = null, $times = null) {
-        if (is_null($name)) {
-            // name is absolutely required
-            throw new \Exception('name is required');
-        }
+    public function reverse($name, $times) {
         if (is_null($times)) {
             $times = 1;
         }

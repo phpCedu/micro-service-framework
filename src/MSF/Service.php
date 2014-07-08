@@ -64,27 +64,39 @@ abstract class Service {
         // idea is to force developers to make their services flexible, and only error on unexpected input when absolute necessary
         foreach ($method_params as $i => $name) {
             // Default to null?
-            if (!array_key_exists($name, $request->args)) {
-                $args[] = null;
-                continue;
+            if (array_key_exists($name, $request->args)) {
+                $val = $request->args[ $name ];
+            } else {
+                $val = null;
             }
-            $val = $request->args[ $name ];
             $type = $method_types[ $i ];
             if ($type == 'string') {
-                if (!is_string($val)) {
-                    // Expected $i-th arg to be a string
+                if (is_string($val)) {
+                    $args[] = $val;
+                } else {
                     $errors[] = 'Should be string: ' . $name;
                     $args[] = null;
-                } else {
+                }
+            } elseif ($type == 'null-string') {
+                if (is_string($val) || is_null($value)) {
                     $args[] = $val;
+                } else {
+                    $errors[] = 'Should be string or null: ' . $name;
+                    $args[] = null;
                 }
             } elseif ($type == 'int32') {
-                if (!is_int($val)) {
-                    // Expected $i-th arg to be an integer
+                if (is_int($val)) {
+                    $args[] = $val;
+                } else {
                     $errors[] = 'Should be int32: ' . $name;
                     $args[] = null;
-                } else {
+                }
+            } elseif ($type == 'null-int32') {
+                if (is_int($val) || is_null($val)) {
                     $args[] = $val;
+                } else {
+                    $errors[] = 'Should be int32 or null: ' . $name;
+                    $args[] = null;
                 }
             } elseif ($type == 'array') {
                 if (!is_array($val)) {

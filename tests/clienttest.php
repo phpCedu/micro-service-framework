@@ -13,7 +13,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
             $this->assertObjectHasAttribute('errors', $e);
             $this->assertInternalType('array', $e->errors);
             $this->assertCount(1, $e->errors);
-            $this->assertEquals('name is required', $e->errors[0]);
+            $this->assertEquals('Should be string: input', $e->errors[0]);
         }
         $this->assertNotNull($e);
         try {
@@ -61,7 +61,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
             // Make sure there are 2 errors about param types
             $this->assertCount(2, $e->errors);
             $this->assertEquals('Should be string: input', $e->errors[0]);
-            $this->assertEquals('Should be int32: times', $e->errors[1]);
+            $this->assertEquals('Should be int32 or null: times', $e->errors[1]);
         }
         // Need to make sure response is null, and exception was thrown
 

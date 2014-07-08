@@ -30,4 +30,8 @@ TODO
 THOUGHTS
 ====
 
-How do we help the schema evolve? Would type-checking the passed params be sufficient, allowing the others to be null? Maybe it's up to newer service backends to fail when they do really need all the newest params.
+How do we help the schema evolve? Would type-checking the passed params be sufficient, allowing the others to be null?
+
+Maybe it's up to newer service backends to fail when they do really need all the newest params. But that would get quite tedious, to have to add manual validation for all required params to the service handler methods.
+
+What about adding additional types like null-string, null-int32? Would allow more control over preventing nulls.
