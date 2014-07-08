@@ -60,8 +60,11 @@ abstract class Client {
         $this->response = $response;
 
         // Errors
+        // Guess we're throwing an exception here, because otherwise the request is expected to return the $response->body
+        // hmm ...
         if ($response->errors) {
             $e = new \Exception('Errors with request');
+            $e->more = $response;
             $e->errors = $response->errors;
             throw $e;
         }

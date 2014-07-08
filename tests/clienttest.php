@@ -15,7 +15,8 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
         try {
             $response = $this->client->reverse('hey', 5);
         } catch (\Exception $e) {
-            echo 'One: ' . implode("\r\n", $e->errors) . "\r\n";
+            // This shouldn't happen
+            //echo 'One: ' . implode("\r\n", $e->errors) . "\r\n";
         }
         $this->assertEquals('yeh', $response);
 
@@ -46,15 +47,12 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
             // Bad return values on server side turn into error responses
             $response = $this->client->badReturn();
         } catch (\Exception $e) {
-            // Wait a minute, the client promotes response errors to exceptions? is that right?
-            // That means we never get the response object directly ... hmm, decisions
-            // TODO - should we throw exceptions, or return response objects with error messages?
-            echo implode("\r\n", $e->errors) . "\r\n";
+            $this->assertObjectHasAttribute('errors', $e);
+            // Make sure there's 1 error about return type
+            $this->assertCount(1, $e->errors);
+            $this->assertEquals('RPC call was expected to return a string', $e->errors[0]);
+
         }
-        // Make sure exception was/not thrown
-        //$this->assertObjectHasAttribute('errors', $response);
-        // Make sure there's 1 error about return type
-        //$this->assertCount(1, $response->errors);
     }
 }
 
