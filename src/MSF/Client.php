@@ -5,6 +5,8 @@ abstract class Client {
     protected $serviceClass;
     protected $transport;
     protected $encoder;
+    public $filters = array();
+    public $response;
 
     public function __construct($serviceClass, $transport, $encoder) {
         $this->serviceClass = $serviceClass;
@@ -34,7 +36,9 @@ abstract class Client {
         // Don't encode empty body
         $request->encodeUsing($this->encoder, true);
 
-        $this->preRequest($request);
+        foreach ($this->filters as $filter) {
+            $request = $filter->request($request);
+        }
         try {
             $this->transport->write($request);
         } catch (\Exception $e) {
@@ -47,7 +51,14 @@ abstract class Client {
             throw $e;
         }
         $response->decodeUsing($this->encoder);
-        $this->postResponse($response);
+
+        // Filter response in reverse order because ... can't remember why
+        foreach (array_reverse($this->filters) as $filter) {
+            $response = $filter->response($response);
+        }
+        // Save response so we can get OOB data from it, but there's probably a better way
+        $this->response = $response;
+
         // Errors
         if ($response->errors) {
             $e = new \Exception('Errors with request');

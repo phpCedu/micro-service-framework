@@ -24,3 +24,4 @@ TODO
 ====
 
 * Set up for installation via composer
+* Implement same sort of filter loops in Client as in Server ... allow filters to throw errors, pop off filter stack, essentially

@@ -37,75 +37,6 @@ class Server {
         $this->outTransport = new $transportClass();
     }
 
-    public function validRequest($request, $response) {
-        $serviceClass = $this->serviceClass;
-        $definition = $serviceClass::definition();
-        $rpc = $request->rpc;
-        $errors = array();
-        if (!array_key_exists($rpc, $definition)) {
-            // Method doesn't exist
-            $errors[] = $rpc . ' RPC method does not exist';
-            $response->errors = $errors;
-            return false;
-        }
-        $args = array();
-        if (!array_key_exists(1, $definition[$rpc])) {
-            return $args;
-        }
-        if (!array_key_exists(2, $definition[$rpc])) {
-            $definition[$rpc][2] = array();
-        }
-        $method_params = $definition[$rpc][1];
-        $method_types = $definition[$rpc][2];
-        /*
-        Keep it simple for now:
-        - args are required. later will default to null if not sent
-        - do simple type checking
-        */
-        foreach ($method_params as $i => $name) {
-            // Default to null?
-            if (!array_key_exists($name, $request->args)) {
-                // FAIL - Log the error
-                $errors[] = 'Param missing: ' . $name;
-                $args[] = null;
-                continue;
-            }
-            $val = $request->args[ $name ];
-            $type = $method_types[ $i ];
-            if ($type == 'string') {
-                if (!is_string($val)) {
-                    // Expected $i-th arg to be a string
-                    $errors[] = 'Should be string: ' . $name;
-                    $args[] = null;
-                } else {
-                    $args[] = $val;
-                }
-            } elseif ($type == 'int32') {
-                if (!is_int($val)) {
-                    // Expected $i-th arg to be an integer
-                    $errors[] = 'Should be int32: ' . $name;
-                    $args[] = null;
-                } else {
-                    $args[] = $val;
-                }
-            } elseif ($type == 'array') {
-                if (!is_array($val)) {
-                    // Expected $i-th arg to be an integer
-                    $errors[] = 'Should be an array: ' . $name;
-                    $args[] = null;
-                } else {
-                    $args[] = $val;
-                }
-            }
-        }
-
-        if ($errors) {
-            $response->errors = $errors;
-            return false;
-        }
-        return $args;
-    }
-
     public function run() {
         $serviceClass = $this->serviceClass;
         $request = $this->inTransport->read();
@@ -130,11 +61,8 @@ class Server {
             $rpc = $response->rpc = $request->rpc;
             $response->args = $request->args;
         
-            // DO TYPE CHECKING - This needs to be handled by a Protocol-type class
-            $definition = $serviceClass::definition();
-        
-            // validRequest() returns prepared args array for call_user_func_array()
-            $args = $this->validRequest($request, $response);
+            // validateRequest() returns prepared args array for call_user_func_array()
+            $args = $serviceClass::validateRequest($request, $response);
             if ($args !== false) {
                 try {
                     // call_user_func_array() can return false for errors,
@@ -146,24 +74,7 @@ class Server {
                     );
                 }
                 if (!$response->errors) {
-                    $return_type = $definition[$rpc][0];
-                    if ($return_type === 'null') {
-                        if (!is_null($return_value)) {
-                            // FAIL
-                            $response->addError('RPC call was expected to return null');
-                        }
-                    } elseif ($return_type === 'string') {
-                        if (!is_string($return_value)) {
-                            // FAIL
-                            $response->addError('RPC call was expected to return a string');
-                        }
-                    } elseif ($return_type === 'int32') {
-                        if (!is_int($return_value)) {
-                            // FAIL
-                            $response->addError('RPC call was expected to return an int');
-                        }
-                    }
-                    $response->body = $return_value;
+                    $response->body = $serviceClass::validateReturn($return_value, $request->rpc, $response);
                 }
             }
 
@@ -171,11 +82,12 @@ class Server {
             $response->encodeUsing($serviceClass::encoder());
         }
         
-        // Use the $i from the above loop to loop backwards from where we left off
+        // Use the $i from the above loop to loop backwards from where we left off,
+        // so that we can trigger errors from within filters
         // UNSURE ABOUT WHETHER WE SHOULD UNROLL IF WE GOT AN ERROR, OR RETURN STRAIGHT AWAY
         // MIGHT BE NICE TO GIVE FILTERS THE OPTION TO ANNOTATE IN THE EVENT OF AN ERROR
-        for (; $i >=0; $i--) {
-            $filter = $this->filters[$i];
+        for (; $i >= 0; $i--) {
+            $filter = $this->filters[ $i ] ;
             $response = $filter->response($response);
         }
         

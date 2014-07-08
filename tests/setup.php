@@ -14,16 +14,17 @@ class MyServer extends MSF\Server {
     public function __construct($serviceClass, $handler) {
         parent::__construct($serviceClass, $handler);
         // Set up default filters
-        $this->filters[] = new MyFilterDoesProfiling();
-        $this->filters[] = new MyFilterConvertsRequest();
+        $this->filters[] = new MyServerProfilingFilter();
+        //$this->filters[] = new MyFilterConvertsRequest();
     }
 }
 
 // Server-side filters
-class MyFilterDoesProfiling extends \MSF\Filter {
+class MyProfilingFilter implements \MSF\FilterInterface {
     protected $started;
     protected $rpc;
     protected $profile;
+    protected $prefix = '';
     public function request(\MSF\RequestResponse $request) {
         $this->rpc = $request->rpc;
         $this->started = microtime(true);
@@ -31,18 +32,29 @@ class MyFilterDoesProfiling extends \MSF\Filter {
         return $request;
     }
     public function response(\MSF\RequestResponse $response) {
-        $response->oob(
-            'profile',
-            array(
-                'server.rpc' => $this->rpc,
-                'start' => $this->started,
-                'end' => microtime(true),
-                'host' => gethostname()
-            )
+        $oob = array(
+            'client.rpc' => $this->rpc,
+            'started' => $this->started,
+            'ended' => microtime(true),
+            'host' => gethostname()
         );
+        $profile = $response->oob('profile');
+        if ($profile) {
+            $oob['profile'] = $profile;
+        }
+        // uhh, modifying a response is ugly
+        $response->oob('profile', $oob);
         return $response;
     }
 }
+class MyClientProfilingFilter extends MyProfilingFilter {
+    protected $prefix = 'client.';
+}
+class MyServerProfilingFilter extends MyProfilingFilter {
+    protected $prefix = 'server.';
+}
+// Bah
+/*
 class MyFilterConvertsRequest extends \MSF\Filter {
     public function request(\MSF\RequestResponse $request) {
         // Wrap it like an onion
@@ -52,6 +64,7 @@ class MyFilterConvertsRequest extends \MSF\Filter {
 }
 class HTTPRequestResponse2 extends \MSF\RequestResponse\HTTPRequestResponse {
 }
+*/
 
 // The actual service implementation is done inside a ServiceHandler
 class MyServiceHandler extends \MSF\ServiceHandler {
@@ -124,6 +137,11 @@ class MyClient extends \MSF\Client {
     protected $rpc;
     // Expose the response so we can view profiling data
     public $response;
+
+    public function __construct($serviceClass, $transport, $encoder) {
+        parent::__construct($serviceClass, $transport, $encoder);
+        $this->filters[] = new MyClientProfilingFilter();
+    }
 
     // These methods allow us to do profiling on client requests
     public function preRequest($request) {
