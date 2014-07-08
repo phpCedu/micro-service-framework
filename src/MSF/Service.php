@@ -59,16 +59,12 @@ abstract class Service {
         }
         $method_params = $definition[$rpc][1];
         $method_types = $definition[$rpc][2];
-        /*
-        Keep it simple for now:
-        - args are required. later will default to null if not sent
-        - do simple type checking
-        */
+        // Do simple type-checking for sent params ... all others default to null
+        // It's up to the service handler to error out if it really requires a param ...
+        // idea is to force developers to make their services flexible, and only error on unexpected input when absolute necessary
         foreach ($method_params as $i => $name) {
             // Default to null?
             if (!array_key_exists($name, $request->args)) {
-                // FAIL - Log the error
-                $errors[] = 'Param missing: ' . $name;
                 $args[] = null;
                 continue;
             }

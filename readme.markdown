@@ -25,3 +25,9 @@ TODO
 
 * Set up for installation via composer
 * Implement same sort of filter loops in Client as in Server ... allow filters to throw errors, pop off filter stack, essentially
+* Test when Server has a newer Service definition than the client
+
+THOUGHTS
+====
+
+How do we help the schema evolve? Would type-checking the passed params be sufficient, allowing the others to be null? Maybe it's up to newer service backends to fail when they do really need all the newest params.

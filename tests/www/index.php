@@ -2,5 +2,5 @@
 
 include('../setup.php');
 
-$server = MyService::server(new MyServiceHandler);
+$server = MyNewerService::server(new MyNewerServiceHandler);
 $server->run();
