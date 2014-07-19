@@ -32,7 +32,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
     }
 
     public function test_newer_endpoint() {
-        $client = MyNewerService::client();
+        $client = ClientTestService2::client();
         try {
             $response = $client->reverse('hey', 5);
         } catch (\Exception $e) {
@@ -50,7 +50,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
 
 
     public function test_definition_enforcement() {
-        $client = MyNewerService::client();
+        $client = ClientTestService2::client();
 
         // Validate param type
         try {
