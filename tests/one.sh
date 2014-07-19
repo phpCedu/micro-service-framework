@@ -1,3 +1,3 @@
 #!/bin/sh
-cd www
+cd www-client
 php -S localhost:9999 

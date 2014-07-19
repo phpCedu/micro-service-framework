@@ -78,18 +78,3 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
         }
     }
 }
-
-
-// More complex data types
-/*
-try {
-    $data = array(
-        'name' => 'Name',
-        'ids' => array(1,5,34,77)
-    );
-    $out = $client->yessir($data);
-    var_dump($out);
-} catch (\Exception $e) {
-    var_dump($e);
-}
-*/
