@@ -1,12 +1,12 @@
 <?php
 error_reporting(E_ALL);
 
-include('setup.php');
+include('setup.client-test.php');
 
 class ClientTest extends \PHPUnit_Framework_TestCase {
 
     public function test_simple_with_profiling() {
-        $client = MyService::client();
+        $client = ClientTestService::client();
         try {
             $response = $client->reverse();
         } catch (\Exception $e) {
