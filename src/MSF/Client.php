@@ -2,21 +2,20 @@
 namespace MSF;
 
 abstract class Client {
-    protected $serviceClass;
+    protected $serviceDefinition;
     protected $transport;
     protected $encoder;
     public $filters = array();
     public $response;
 
-    public function __construct($serviceClass, $transport, $encoder) {
-        $this->serviceClass = $serviceClass;
+    public function __construct($serviceDefinition, $transport, $encoder) {
+        $this->serviceDefinition = $serviceDefinition;
         $this->transport = $transport;
         $this->encoder = $encoder;
     }
 
     public function __call($name, $args) {
-        $serviceClass = $this->serviceClass;
-        $definition = $serviceClass::$definition;
+        $definition = $this->serviceDefinition;
         
         $request = $this->transport->newRequest();
         $request->rpc = $name;

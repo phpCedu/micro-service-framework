@@ -5,7 +5,7 @@ abstract class Service {
     protected static $endpoint;
     protected static $definition; // Interface definition for this service
     protected static $transportClass = '\MSF\Transport\CurlTransport';
-    protected static $encoderClass; // Can encode as JSON, or MsgPack, etc
+    protected static $encoderClass;
     protected static $clientClass;
     protected static $serverClass;
 
@@ -17,7 +17,7 @@ abstract class Service {
         }
         $clientClass = static::$clientClass;
         return new $clientClass(
-            get_called_class(),
+            static::definition(),
             static::transport(),
             static::encoder()
         );

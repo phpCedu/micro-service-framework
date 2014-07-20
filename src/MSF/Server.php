@@ -2,7 +2,7 @@
 
 namespace MSF;
 
-class Server {
+abstract class Server {
     public $filters = array();
     protected $inTransport;
     protected $outTransport;
