@@ -11,8 +11,8 @@ class HTTPTransport extends \MSF\Transport {
     public function data($data) {
         $this->data = $data;
     }
-    public function read() {
-        $r = new \MSF\RequestResponse\HTTPRequestResponse();
+    public function readResponse() {
+        $r = new \MSF\Response\HTTPResponse();
         if ($this->data) {
         } elseif ($this->socket) {
         }
@@ -31,8 +31,9 @@ class HTTPTransport extends \MSF\Transport {
         return $r;
     }
 
+    /*
     // TODO - Not implemented yet
-    public function write(\MSF\RequestResponse $r) {
+    public function write(\MSF\Request $r) {
         // Write out $this->headers
         // Now write out the response annotations as headers
         $this->writeOOB($r->oob());
@@ -42,12 +43,13 @@ class HTTPTransport extends \MSF\Transport {
         // 
         return 0;
     }
+    */
 
     public function newRequest() {
-        return new \MSF\RequestResponse\HTTPRequestResponse();
+        return new \MSF\Request\HTTPRequest();
     }
     public function newResponse() {
-        return new \MSF\RequestResponse\HTTPRequestResponse();
+        return new \MSF\Response\HTTPResponse();
     }
 
     protected function writeOOB($oob) {

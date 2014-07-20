@@ -92,13 +92,13 @@ class ProfilingFilter implements \MSF\FilterInterface {
     protected $rpc;
     protected $profile;
     protected $prefix = '';
-    public function request(\MSF\RequestResponse $request) {
+    public function request(\MSF\Request $request) {
         $this->rpc = $request->rpc;
         $this->started = microtime(true);
         $this->profile = $request->oob('profile');
         return $request;
     }
-    public function response(\MSF\RequestResponse $response) {
+    public function response(\MSF\Response $response) {
         $oob = array(
             'client.rpc' => $this->rpc,
             'started' => $this->started,

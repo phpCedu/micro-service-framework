@@ -39,13 +39,13 @@ abstract class Client {
             $request = $filter->request($request);
         }
         try {
-            $this->transport->write($request);
+            $this->transport->writeRequest($request);
         } catch (\Exception $e) {
             throw $e;
         }
         // Get response
         try {
-            $response = $this->transport->read();
+            $response = $this->transport->readResponse();
         } catch (\Exception $e) {
             throw $e;
         }

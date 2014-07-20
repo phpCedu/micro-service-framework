@@ -39,15 +39,16 @@ abstract class Server {
 
     public function run() {
         $serviceClass = $this->serviceClass;
-        $request = $this->inTransport->read();
+        $request = $this->inTransport->readRequest();
         $request->decodeUsing($serviceClass::encoder());
         $response = $request->response;
         
         // Pass request to all the chained filters
         foreach ($this->filters as $i => $filter) {
             $request = $filter->request($request);
-            // Is $request an instance of an error? ... If so, don't pass to any more filters
-            if ($request instanceof Exception) { // Filters shouldn't return Exceptions, this is just an example
+            // Did the filter error (maybe it returns a Response to signal error)?
+            // If so, break out and return asap
+            if ($request instanceof \MSF\ResponseInterface) {
                 //$response = $this->outTransport->newResponse();
                 // Annotate with error info ... who knows yet
                 // Unwind with a response
@@ -55,7 +56,7 @@ abstract class Server {
             }
         }
         
-        if (!($request instanceof Exception)) {
+        if ($request instanceof \MSF\RequestInterface) {
             // Get the response ready, so we can annotate it before filling the value
             //$response = $this->outTransport->newResponse();
             $rpc = $response->rpc = $request->rpc;
@@ -92,7 +93,7 @@ abstract class Server {
         }
         
         // This returns bytes written, but we don't need that here
-        $this->outTransport->write($response);
+        $this->outTransport->writeResponse($response);
         return true;
     }
 }

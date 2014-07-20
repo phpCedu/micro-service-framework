@@ -1,7 +1,7 @@
 <?php
-namespace MSF\RequestResponse;
+namespace MSF\Response;
 
-class HTTPRequestResponse extends \MSF\RequestResponse {
+class HTTPResponse extends \MSF\Response {
     // associative
     public $headers = array();
 
@@ -22,5 +22,5 @@ class HTTPRequestResponse extends \MSF\RequestResponse {
         }
         $this->_oob[$key] = $value;
     }
-}
 
+}

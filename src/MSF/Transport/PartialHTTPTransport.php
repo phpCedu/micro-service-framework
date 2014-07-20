@@ -4,8 +4,8 @@ namespace MSF\Transport;
 // This class assumes headers have been parsed into $_SERVER and the HTTP body is in "php://input"
 // It writes out similarly ... echoing the body and using header()
 class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
-    public function read() {
-        $r = new \MSF\RequestResponse\HTTPRequestResponse();
+    public function readRequest() {
+        $r = new \MSF\Request\HTTPRequest();
         // headers should already be in $_SERVER, now just extract the ones that pertain to us
         // Loop through $_SERVER looking for headers with our special "HTTP_ABC123" prefix
         // $r->headers['ONE'] = 'TWO';
@@ -19,11 +19,11 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
             }
         }
 
-        $r->response = new \MSF\RequestResponse\HTTPRequestResponse();
+        $r->response = new \MSF\Resposne\HTTPResponse();
         return $r;
     }
 
-    public function write(\MSF\RequestResponse $r) {
+    public function writeResponse(\MSF\Response\HTTPResponse $r) {
         // Write out non-annotation headers
         // then
         // Write out the response annotations as headers

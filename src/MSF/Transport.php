@@ -8,24 +8,24 @@ abstract class Transport implements \MSF\TransportInterface {
         $this->endpoint = $endpoint;
     }
 
-    /**
-     * @return \MSF\RequestResponse instance
-     */
-    public function read() {
+    public function readRequest() {
+        throw new \Exception('Not implemented');
     }
-    /**
-     * @param \MSF\RequestResponse $request
-     * @return int - bytes written
-     * @throws \Exception
-     */
-    public function write(\MSF\RequestResponse $request) {
+    public function readResponse() {
+        throw new \Exception('Not implemented');
+    }
+    public function writeRequest(\MSF\Request $request) {
+        throw new \Exception('Not implemented');
+    }
+    public function writeResponse(\MSF\Response $response) {
+        throw new \Exception('Not implemented');
     }
 
     public function newRequest() {
-        return new \MSF\RequestResponse();
+        return new \MSF\Request();
     }
     public function newResponse() {
-        return new \MSF\RequestResponse();
+        return new \MSF\Response();
     }
     public function oob($key = null, $value = null) {
         // BaseTransport doesn't support OOB

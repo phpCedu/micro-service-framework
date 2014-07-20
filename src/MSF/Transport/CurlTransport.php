@@ -4,11 +4,10 @@ namespace MSF\Transport;
 class CurlTransport extends \MSF\Transport\HTTPTransport {
     protected $response;
 
-    public function read() {
-        // read() makes no sense for Curl ... once we write, we automatially read too
-        return $this->response->read();
+    public function readResponse() {
+        return $this->response->readResponse();
     }
-    public function write(\MSF\RequestResponse $request) {
+    public function writeRequest(\MSF\Request $request) {
         // Somehow need to get the service endpoint
         $ch = curl_init($this->endpoint);
         if(!$ch) {
