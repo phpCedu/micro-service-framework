@@ -51,16 +51,14 @@ class ClientTestService extends MSF\Service {
 }
 
 class ClientTestClient extends \MSF\Client {
-    public function __construct($service, $transport) {
-        parent::__construct($service, $transport);
+    public function setup() {
         $this->filters[] = new ClientProfilingFilter();
     }
 }
 
 
 class ClientTestServer extends MSF\Server {
-    public function __construct($service, $handler, $inTransport, $outTransport = null) {
-        parent::__construct($service, $handler, $inTransport, $outTransport);
+    public function setup() {
         // Set up default filters
         $this->filters[] = new ServerProfilingFilter();
     }
@@ -140,7 +138,6 @@ class ClientTestService2 extends ClientTestService {
     );
 }
 
-// The actual service implementation is done inside a ServiceHandler
 class ClientTestServiceHandler2 extends \MSF\ServiceHandler {
     public function reverse($name, $times) {
         if (is_null($times)) {

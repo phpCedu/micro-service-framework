@@ -1,7 +1,7 @@
 Micro Services Framework
 ====
 
-This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift.
+This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift. RPC calls can be encoded in JSON or MsgPack
 
 Requirements
 ====
@@ -14,16 +14,16 @@ Usage
 Extend the following classes:
 
 * Service - Configure the following:
-  * Interface definition
-  * Class name of your client
-  * Class name of your server
-  * Class name of transport to use
-  * Class name of encoder to use
+  * Static interface definition
+  * Method to return a client instance
+  * Method to return a server instance
 * Server
 * Client
 
-Call `MyService::server()` to get an instance of your server.
-Call `MyService::client()` to get an instance of your client.
+Call `MyService::getInstance()->server()` to get an instance of your server.
+Call `MyService::getInstance()->client()` to get an instance of your client.
+
+See `tests/setup.client-test.php` for a thorough example
 
 TODO
 ====
@@ -33,7 +33,6 @@ TODO
 * Test when Server has a newer Service definition than the client
 * ThrottledAuth filter
 * Probably should stub out a Transport, and test Server and Filter interaction directly: make sure Filters can throw exceptions
-* Less static methods ... dealing with instances is more flexible
 
 THOUGHTS
 ====

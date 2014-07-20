@@ -9,12 +9,6 @@ abstract class Service extends \MSF\Helper\Singletons {
     protected static $clientClass;
     protected static $serverClass;
 
-    public function endpoint() {
-        if (!static::$endpoint) {
-            throw new \Exception('Please specify an endpoint in your Service class');
-        }
-        return static::$endpoint;
-    }
     public function definition() {
         if (!static::$definition) {
             throw new \Exception('Please create a service definition in your Service class');

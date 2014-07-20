@@ -24,6 +24,9 @@ abstract class Server {
         if ($outTransport) {
             $this->outTransport = $outTransport;
         }
+        $this->setup();
+    }
+    public function setup() {
     }
 
     public function run() {

@@ -10,6 +10,9 @@ abstract class Client {
     public function __construct(\MSF\Service $service, \MSF\Transport $transport) {
         $this->service = $service;
         $this->transport = $transport;
+        $this->setup();
+    }
+    public function setup() {
     }
 
     public function __call($name, $args) {
