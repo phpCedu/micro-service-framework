@@ -125,7 +125,9 @@ class ServerProfilingFilter extends ProfilingFilter {
 // API VERSION 2
 class ClientTestService2 extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
-    public static $encoderClass = '\\MSF\\Encoder\\JsonEncoder';
+    // this needs help
+    public static $transport = '\MSF\Transport\PartialHTTPTransport';
+    public static $encoderClass = '\MSF\Encoder\JsonEncoder';
     public static $clientClass = 'ClientTestClient';
     public static $serverClass = 'ClientTestServer';
 

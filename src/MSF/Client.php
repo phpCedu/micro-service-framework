@@ -8,7 +8,7 @@ abstract class Client {
     public $filters = array();
     public $response;
 
-    public function __construct($serviceDefinition, \MSF\TransportInterface $transport, \MSF\EncoderInterface $encoder) {
+    public function __construct($serviceDefinition, \MSF\Transport $transport, \MSF\EncoderInterface $encoder) {
         $this->serviceDefinition = $serviceDefinition;
         $this->transport = $transport;
         $this->encoder = $encoder;

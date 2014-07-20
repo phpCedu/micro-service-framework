@@ -38,7 +38,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
         } catch (\Exception $e) {
             // This shouldn't happen
             echo $e->getMessage();
-            var_dump($e->getTrace());exit;
+            //var_dump($e->getTrace());exit;
             //echo 'One: ' . implode("\r\n", $e->errors) . "\r\n";
         }
         $this->assertEquals('yeh', $response);

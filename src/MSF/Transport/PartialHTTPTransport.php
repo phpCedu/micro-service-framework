@@ -19,7 +19,7 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
             }
         }
 
-        $r->response = new \MSF\Resposne\HTTPResponse();
+        $r->response = new \MSF\Response\HTTPResponse();
         return $r;
     }
 

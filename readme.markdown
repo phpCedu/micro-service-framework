@@ -1,3 +1,8 @@
+Micro Services Framework
+====
+
+This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift.
+
 Requirements
 ====
 
@@ -9,9 +14,9 @@ Usage
 Extend the following classes:
 
 * Service - Configure the following:
+  * Interface definition
   * Class name of your client
   * Class name of your server
-  * Interface definition
   * Class name of transport to use
   * Class name of encoder to use
 * Server

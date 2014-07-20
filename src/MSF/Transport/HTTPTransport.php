@@ -17,8 +17,15 @@ class HTTPTransport extends \MSF\Transport {
         } elseif ($this->socket) {
         }
 
+        if (!$this->data) {
+            throw new \Exception('No response data to read');
+        }
+
         // Split headers and body
         list($headers, $body) = explode("\r\n\r\n", $this->data);
+        if (!$body) {
+            throw new \Exception('Response body is empty');
+        }
         $r->encoded = $body;
         foreach (explode("\r\n", $headers) as $header) {
             if (strncasecmp($header, 'HTTP_Z_', 7) == 0) {

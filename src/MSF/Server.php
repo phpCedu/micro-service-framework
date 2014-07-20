@@ -56,7 +56,7 @@ abstract class Server {
             }
         }
         
-        if ($request instanceof \MSF\RequestInterface) {
+        if ($request instanceof \MSF\Request) {
             // Get the response ready, so we can annotate it before filling the value
             //$response = $this->outTransport->newResponse();
             $rpc = $response->rpc = $request->rpc;
