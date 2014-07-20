@@ -12,7 +12,7 @@ class HTTPTransport extends \MSF\Transport {
         $this->data = $data;
     }
     public function readResponse() {
-        $r = new \MSF\Response\HTTPResponse();
+        $response = new \MSF\Response\HTTPResponse();
         if ($this->data) {
         } elseif ($this->socket) {
         }
@@ -26,27 +26,28 @@ class HTTPTransport extends \MSF\Transport {
         if (!$body) {
             throw new \Exception('Response body is empty');
         }
-        $r->encoded = $body;
+        $response->encoded = $body;
         foreach (explode("\r\n", $headers) as $header) {
             if (strncasecmp($header, 'HTTP_Z_', 7) == 0) {
                 $colon = strpos($header, ':');
                 $key = strtolower(trim(substr($header, 7, $colon-7)));
                 $value = trim(substr($header, $colon+1));
-                $r->oob($key, json_decode($value, true));
+                $response->oob($key, json_decode($value, true));
             }
-        } // need to convert to key=>value too
-        return $r;
+        }
+        $response->decodeUsing($this->encoder);
+        return $response;
     }
 
     /*
     // TODO - Not implemented yet
-    public function write(\MSF\Request $r) {
+    public function writeRequest(\MSF\Request $request) {
         // Write out $this->headers
         // Now write out the response annotations as headers
-        $this->writeOOB($r->oob());
+        $this->writeOOB($request->oob());
        
         // Now write the response body
-        // fwrite($this->socket, $r->encoded);
+        // fwrite($this->socket, $request->encoded);
         // 
         return 0;
     }

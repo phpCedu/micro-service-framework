@@ -3,25 +3,13 @@
 namespace MSF;
 
 abstract class Server {
-    protected $service;
-
     public $filters = array();
+    protected $service;
     protected $inTransport;
     protected $outTransport;
     protected $handler;
 
     protected static $instance;
-    /*
-    These are public and static because when a service call needs to make a nested
-    RPC call, it needs to know which response to bubble up OOB-data/annotations into.
-    Though, I guess the encoder doesn't need to be public, since that depends on the
-    RPC call being made ... the client should know which encoding needs to be spoken.
-
-    So is it the Service that defines the encoder? Or the server? Probably Service ...
-    since Client and Server both use the same Service definition, that make sense.
-    */
-    public static $encoder; // why this?
-    public static $response;
 
     // So Client instances can check whether or not they're within a server context
     // or something
@@ -39,9 +27,7 @@ abstract class Server {
     }
 
     public function run() {
-        $encoder = $this->service->encoder();
         $request = $this->inTransport->readRequest();
-        $request->decodeUsing($encoder);
         $response = $request->response;
         
         // Pass request to all the chained filters
@@ -80,8 +66,6 @@ abstract class Server {
                 }
             }
 
-            // Who's in charge of encoding?
-            $response->encodeUsing($encoder);
         }
         
         // Use the $i from the above loop to loop backwards from where we left off,

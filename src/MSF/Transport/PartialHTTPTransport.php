@@ -5,32 +5,28 @@ namespace MSF\Transport;
 // It writes out similarly ... echoing the body and using header()
 class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
     public function readRequest() {
-        $r = new \MSF\Request\HTTPRequest();
-        // headers should already be in $_SERVER, now just extract the ones that pertain to us
-        // Loop through $_SERVER looking for headers with our special "HTTP_ABC123" prefix
-        // $r->headers['ONE'] = 'TWO';
-        
-        // just read the remainder of the body
-        $r->encoded = file_get_contents('php://input');
+        $request = new \MSF\Request\HTTPRequest();
+        $request->encoded = file_get_contents('php://input');
         foreach ($_SERVER as $key => $value) {
             if (strncasecmp($key, 'HTTP_Z_', 7) == 0) {
                 $key = strtolower(substr($key, 7));
-                $r->oob($key, json_decode($value, true));
+                $request->oob($key, json_decode($value, true));
             }
         }
-
-        $r->response = new \MSF\Response\HTTPResponse();
-        return $r;
+        $request->decodeUsing($this->encoder);
+        $request->response = new \MSF\Response\HTTPResponse();
+        return $request;
     }
 
-    public function writeResponse(\MSF\Response\HTTPResponse $r) {
+    public function writeResponse(\MSF\Response\HTTPResponse $response) {
         // Write out non-annotation headers
         // then
         // Write out the response annotations as headers
-        $this->writeOOB($r->oob());
+        $this->writeOOB($response->oob());
+        $response->encodeUsing($this->encoder);
 
-        echo $r->encoded;
-        return strlen($r->encoded);
+        echo $response->encoded;
+        return strlen($response->encoded);
     }
 
     protected function writeOOB($oob) {

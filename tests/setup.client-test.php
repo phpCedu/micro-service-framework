@@ -33,7 +33,8 @@ class ClientTestService extends MSF\Service {
         return new ClientTestClient(
             $this,
             new \MSF\Transport\CurlTransport(
-                static::$endpoint
+                static::$endpoint,
+                new \MSF\Encoder\JsonEncoder()
             )
         );
     }
@@ -42,20 +43,14 @@ class ClientTestService extends MSF\Service {
             $this,
             new ClientTestServiceHandler($this),
             new \MSF\Transport\PartialHTTPTransport(
-                static::$endpoint
+                static::$endpoint,
+                new \MSF\Encoder\JsonEncoder()
             )
         );
-    }
-    public function encoder() {
-        return new \MSF\Encoder\JsonEncoder();
     }
 }
 
 class ClientTestClient extends \MSF\Client {
-    protected $rpc;
-    // Expose the response so we can view profiling data
-    public $response;
-
     public function __construct($service, $transport) {
         parent::__construct($service, $transport);
         $this->filters[] = new ClientProfilingFilter();
@@ -64,9 +59,6 @@ class ClientTestClient extends \MSF\Client {
 
 
 class ClientTestServer extends MSF\Server {
-    // TODO - Fix this
-    public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
-
     public function __construct($service, $handler, $inTransport, $outTransport = null) {
         parent::__construct($service, $handler, $inTransport, $outTransport);
         // Set up default filters

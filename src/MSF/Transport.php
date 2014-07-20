@@ -3,9 +3,11 @@ namespace MSF;
 
 abstract class Transport {
     protected $endpoint;
+    protected $encoder;
 
-    public function __construct($endpoint) {
+    public function __construct($endpoint, $encoder) {
         $this->endpoint = $endpoint;
+        $this->encoder = $encoder;
     }
 
     public function readRequest() {

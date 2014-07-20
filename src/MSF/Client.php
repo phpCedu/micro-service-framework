@@ -14,7 +14,6 @@ abstract class Client {
 
     public function __call($name, $args) {
         $definition = $this->service->definition();
-        $encoder = $this->service->encoder();
         $transport = $this->transport;
         
         $request = $transport->newRequest();
@@ -31,7 +30,6 @@ abstract class Client {
             }
         }
         $request->args = $mapped;
-        $request->encodeUsing($encoder);
 
         foreach ($this->filters as $filter) {
             $request = $filter->request($request);
@@ -47,7 +45,6 @@ abstract class Client {
         } catch (\Exception $e) {
             throw $e;
         }
-        $response->decodeUsing($encoder);
 
         // Filter response in reverse order because ... can't remember why
         foreach (array_reverse($this->filters) as $filter) {

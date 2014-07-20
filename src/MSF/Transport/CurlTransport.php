@@ -8,7 +8,7 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
         return $this->response->readResponse();
     }
     public function writeRequest(\MSF\Request $request) {
-        // Somehow need to get the service endpoint
+        $request->encodeUsing($this->encoder);
         $ch = curl_init($this->endpoint);
         if(!$ch) {
             $e = curl_error($ch);
@@ -31,7 +31,10 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
             // Since cURL returns the response right-away, save it for later
             // ... will be returned by read()
             // Leverage the HTTPTransport to parse the HTTP response
-            $this->response = new \MSF\Transport\HTTPTransport($this->endpoint);
+            $this->response = new \MSF\Transport\HTTPTransport(
+                $this->endpoint,
+                $this->encoder
+            );
             $this->response->data($response);
         }
         return strlen($request->encoded);
