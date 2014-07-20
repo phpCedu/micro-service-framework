@@ -21,5 +21,10 @@ class OtherTest extends \PHPUnit_Framework_TestCase {
         // Need to test profile format too
         $this->assertCount(5, $profile);
     }
+
+    // If you forget to set something, it should be easy to find out about it
+    public function test_helpfulness() {
+        
+    }
 }
 

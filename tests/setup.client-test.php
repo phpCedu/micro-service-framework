@@ -8,7 +8,7 @@ spl_autoload_register(array($loader, 'loadClass'));
 // IMPLEMENTATIONS
 class ClientTestService extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
-    public static $encoder = '\\MSF\\Encoder\\JsonEncoder';
+    public static $encoderClass = '\\MSF\\Encoder\\JsonEncoder';
     public static $clientClass = 'ClientTestClient';
     public static $serverClass = 'ClientTestServer';
 
@@ -125,7 +125,7 @@ class ServerProfilingFilter extends ProfilingFilter {
 // API VERSION 2
 class ClientTestService2 extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
-    public static $encoder = '\\MSF\\Encoder\\JsonEncoder';
+    public static $encoderClass = '\\MSF\\Encoder\\JsonEncoder';
     public static $clientClass = 'ClientTestClient';
     public static $serverClass = 'ClientTestServer';
 

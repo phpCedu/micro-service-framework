@@ -8,7 +8,7 @@ spl_autoload_register(array($loader, 'loadClass'));
 // IMPLEMENTATIONS
 class OtherTestService extends MSF\Service {
     public static $endpoint = 'http://localhost:9998/index.php';
-    public static $encoder = '\\MSF\\Encoder\\MsgPackEncoder';
+    public static $encoderClass = '\MSF\Encoder\MsgPackEncoder';
     public static $clientClass = 'OtherTestClient';
     public static $serverClass = 'OtherTestServer';
 
