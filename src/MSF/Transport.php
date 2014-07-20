@@ -1,7 +1,7 @@
 <?php
 namespace MSF;
 
-abstract class Transport {
+abstract class Transport implements \MSF\TransportInterface {
     protected $endpoint;
 
     public function __construct($endpoint = null) {
