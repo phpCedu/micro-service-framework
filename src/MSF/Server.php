@@ -3,10 +3,11 @@
 namespace MSF;
 
 abstract class Server {
+    protected $service;
+
     public $filters = array();
     protected $inTransport;
     protected $outTransport;
-    protected $serviceClass; // Which Service is being served
     protected $handler;
 
     protected static $instance;
@@ -28,19 +29,19 @@ abstract class Server {
         return static::$instance;
     }
 
-    public function __construct($serviceClass, $handler) {
-        $this->serviceClass = $serviceClass;
+    public function __construct(\MSF\Service $service, \MSF\ServiceHandler $handler, \MSF\Transport $inTransport, \MSF\Transport $outTransport = null) {
+        $this->service = $service;
         $this->handler = $handler;
-
-        $transportClass = static::$transport;
-        $this->inTransport = new $transportClass();
-        $this->outTransport = new $transportClass();
+        $this->inTransport = $this->outTransport = $inTransport;
+        if ($outTransport) {
+            $this->outTransport = $outTransport;
+        }
     }
 
     public function run() {
-        $serviceClass = $this->serviceClass;
+        $encoder = $this->service->encoder();
         $request = $this->inTransport->readRequest();
-        $request->decodeUsing($serviceClass::encoder());
+        $request->decodeUsing($encoder);
         $response = $request->response;
         
         // Pass request to all the chained filters
@@ -63,7 +64,7 @@ abstract class Server {
             $response->args = $request->args;
         
             // validateRequest() returns prepared args array for call_user_func_array()
-            $args = $serviceClass::validateRequest($request, $response);
+            $args = $this->service->validateRequest($request, $response);
             if ($args !== false) {
                 try {
                     // call_user_func_array() can return false for errors,
@@ -75,12 +76,12 @@ abstract class Server {
                     );
                 }
                 if (!$response->errors) {
-                    $response->body = $serviceClass::validateReturn($return_value, $request->rpc, $response);
+                    $response->body = $this->service->validateReturn($return_value, $request->rpc, $response);
                 }
             }
 
             // Who's in charge of encoding?
-            $response->encodeUsing($serviceClass::encoder());
+            $response->encodeUsing($encoder);
         }
         
         // Use the $i from the above loop to loop backwards from where we left off,

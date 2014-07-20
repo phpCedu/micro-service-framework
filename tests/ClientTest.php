@@ -6,7 +6,7 @@ include('setup.client-test.php');
 class ClientTest extends \PHPUnit_Framework_TestCase {
 
     public function test_simple_with_profiling() {
-        $client = ClientTestService::client();
+        $client = ClientTestService::getInstance()->client();
         try {
             $response = $client->reverse();
         } catch (\Exception $e) {
@@ -32,7 +32,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
     }
 
     public function test_newer_endpoint() {
-        $client = ClientTestService2::client();
+        $client = ClientTestService2::getInstance()->client();
         try {
             $response = $client->reverse('hey', 5);
         } catch (\Exception $e) {
@@ -52,7 +52,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
 
 
     public function test_definition_enforcement() {
-        $client = ClientTestService2::client();
+        $client = ClientTestService2::getInstance()->client();
 
         // Validate param type
         try {

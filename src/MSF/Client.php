@@ -2,22 +2,22 @@
 namespace MSF;
 
 abstract class Client {
-    protected $serviceDefinition;
+    protected $service;
     protected $transport;
-    protected $encoder;
     public $filters = array();
     public $response;
 
-    public function __construct($serviceDefinition, \MSF\Transport $transport, \MSF\EncoderInterface $encoder) {
-        $this->serviceDefinition = $serviceDefinition;
+    public function __construct(\MSF\Service $service, \MSF\Transport $transport) {
+        $this->service = $service;
         $this->transport = $transport;
-        $this->encoder = $encoder;
     }
 
     public function __call($name, $args) {
-        $definition = $this->serviceDefinition;
+        $definition = $this->service->definition();
+        $encoder = $this->service->encoder();
+        $transport = $this->transport;
         
-        $request = $this->transport->newRequest();
+        $request = $transport->newRequest();
         $request->rpc = $name;
 
         // prepare args key/value struct, leaving out null values
@@ -31,25 +31,23 @@ abstract class Client {
             }
         }
         $request->args = $mapped;
-
-        // Don't encode empty body
-        $request->encodeUsing($this->encoder, true);
+        $request->encodeUsing($encoder);
 
         foreach ($this->filters as $filter) {
             $request = $filter->request($request);
         }
         try {
-            $this->transport->writeRequest($request);
+            $transport->writeRequest($request);
         } catch (\Exception $e) {
             throw $e;
         }
         // Get response
         try {
-            $response = $this->transport->readResponse();
+            $response = $transport->readResponse();
         } catch (\Exception $e) {
             throw $e;
         }
-        $response->decodeUsing($this->encoder);
+        $response->decodeUsing($encoder);
 
         // Filter response in reverse order because ... can't remember why
         foreach (array_reverse($this->filters) as $filter) {

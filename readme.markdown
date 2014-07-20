@@ -33,6 +33,7 @@ TODO
 * Test when Server has a newer Service definition than the client
 * ThrottledAuth filter
 * Probably should stub out a Transport, and test Server and Filter interaction directly: make sure Filters can throw exceptions
+* Less static methods ... dealing with instances is more flexible
 
 THOUGHTS
 ====

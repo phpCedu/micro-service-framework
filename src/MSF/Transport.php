@@ -4,7 +4,7 @@ namespace MSF;
 abstract class Transport {
     protected $endpoint;
 
-    public function __construct($endpoint = null) {
+    public function __construct($endpoint) {
         $this->endpoint = $endpoint;
     }
 

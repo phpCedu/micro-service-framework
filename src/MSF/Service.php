@@ -1,7 +1,7 @@
 <?php
 namespace MSF;
 
-abstract class Service {
+abstract class Service extends \MSF\Helper\Singletons {
     protected static $endpoint;
     protected static $definition; // Interface definition for this service
     protected static $transportClass = '\MSF\Transport\CurlTransport';
@@ -9,47 +9,13 @@ abstract class Service {
     protected static $clientClass;
     protected static $serverClass;
 
-    // Maybe it'd be better to accept a client class as a param,
-    // that way we can override this method, pass our own to this parent method
-    public static function client() {
-        if (!static::$clientClass) {
-            throw new \Exception('Please specify a client class in your Service class');
-        }
-        $clientClass = static::$clientClass;
-        return new $clientClass(
-            static::definition(),
-            static::transport(),
-            static::encoder()
-        );
-    }
-    public static function server($handler) {
-        if (!static::$serverClass) {
-            throw new \Exception('Please specify a server class in your Service class');
-        }
-        $class = static::$serverClass;
-        return new $class(get_called_class(), $handler);
-    }
-    public static function endpoint() {
+    public function endpoint() {
         if (!static::$endpoint) {
             throw new \Exception('Please specify an endpoint in your Service class');
         }
         return static::$endpoint;
     }
-    public static function transport() {
-        if (!static::$transportClass) {
-            throw new \Exception('Please specify a transport class in your Service class');
-        }
-        $transportClass = static::$transportClass;
-        return new $transportClass(static::endpoint());
-    }
-    public static function encoder() {
-        if (!static::$encoderClass) {
-            throw new \Exception('Please specify an encoder class in your Service class');
-        }
-        $className = static::$encoderClass;
-        return new $className();
-    }
-    public static function definition() {
+    public function definition() {
         if (!static::$definition) {
             throw new \Exception('Please create a service definition in your Service class');
         }
@@ -61,7 +27,7 @@ abstract class Service {
      * @param $response
      * @return args array, ready for use in call_user_func_array()
      */
-    public static function validateRequest($request, $response) {
+    public function validateRequest($request, $response) {
         $definition = static::definition();
         $rpc = $request->rpc;
         $errors = array();
@@ -140,7 +106,7 @@ abstract class Service {
     /**
      * Torn about whether this should return the return value, or assign it into the response accordingly
      */
-    public static function validateReturn($return_value, $rpc, $response) {
+    public function validateReturn($return_value, $rpc, $response) {
         $definition = static::definition();
         $return_type = $definition[$rpc][0];
         if ($return_type === 'null') {

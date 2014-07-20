@@ -8,9 +8,6 @@ spl_autoload_register(array($loader, 'loadClass'));
 // IMPLEMENTATIONS
 class ClientTestService extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
-    public static $encoderClass = '\\MSF\\Encoder\\JsonEncoder';
-    public static $clientClass = 'ClientTestClient';
-    public static $serverClass = 'ClientTestServer';
 
     public static $definition = array(
         'reverse' => array(
@@ -30,6 +27,28 @@ class ClientTestService extends MSF\Service {
             'string'
         )
     );
+
+    public function client() {
+        // think client and server need separate transports
+        return new ClientTestClient(
+            $this,
+            new \MSF\Transport\CurlTransport(
+                static::$endpoint
+            )
+        );
+    }
+    public function server() {
+        return new ClientTestServer(
+            $this,
+            new ClientTestServiceHandler($this),
+            new \MSF\Transport\PartialHTTPTransport(
+                static::$endpoint
+            )
+        );
+    }
+    public function encoder() {
+        return new \MSF\Encoder\JsonEncoder();
+    }
 }
 
 class ClientTestClient extends \MSF\Client {
@@ -37,27 +56,9 @@ class ClientTestClient extends \MSF\Client {
     // Expose the response so we can view profiling data
     public $response;
 
-    public function __construct($serviceClass, $transport, $encoder) {
-        parent::__construct($serviceClass, $transport, $encoder);
+    public function __construct($service, $transport) {
+        parent::__construct($service, $transport);
         $this->filters[] = new ClientProfilingFilter();
-    }
-
-    // These methods allow us to do profiling on client requests
-    public function preRequest($request) {
-        $this->rpc = $request->rpc;
-        $this->started = microtime(true);
-    }
-    public function postResponse($response) {
-        $oob = array(
-            'client.rpc' => $this->rpc,
-            'started' => $this->started,
-            'ended' => microtime(true),
-            'host' => gethostname(),
-            'profile' => $response->oob('profile')
-        );
-        // uhh, modifying a response is ugly
-        $response->oob('profile', $oob);
-        $this->response = $response;
     }
 }
 
@@ -66,8 +67,8 @@ class ClientTestServer extends MSF\Server {
     // TODO - Fix this
     public static $transport = '\\MSF\\Transport\\PartialHTTPTransport';
 
-    public function __construct($serviceClass, $handler) {
-        parent::__construct($serviceClass, $handler);
+    public function __construct($service, $handler, $inTransport, $outTransport = null) {
+        parent::__construct($service, $handler, $inTransport, $outTransport);
         // Set up default filters
         $this->filters[] = new ServerProfilingFilter();
     }
@@ -123,13 +124,8 @@ class ServerProfilingFilter extends ProfilingFilter {
 
 
 // API VERSION 2
-class ClientTestService2 extends MSF\Service {
+class ClientTestService2 extends ClientTestService {
     public static $endpoint = 'http://localhost:9999/index.php';
-    // this needs help
-    public static $transport = '\MSF\Transport\PartialHTTPTransport';
-    public static $encoderClass = '\MSF\Encoder\JsonEncoder';
-    public static $clientClass = 'ClientTestClient';
-    public static $serverClass = 'ClientTestServer';
 
     public static $definition = array(
         'reverse' => array(
