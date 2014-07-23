@@ -34,6 +34,7 @@ abstract class Server {
         $response = $request->response;
         
         // Pass request to all the chained filters
+	$i = -1;
         foreach ($this->filters as $i => $filter) {
             $request = $filter->request($request);
             // Did the filter error (maybe it returns a Response to signal error)?
