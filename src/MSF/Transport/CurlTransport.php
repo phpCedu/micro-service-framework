@@ -2,10 +2,11 @@
 namespace MSF\Transport;
 
 class CurlTransport extends \MSF\Transport\HTTPTransport {
+    // Holds a Response instance
     protected $response;
 
     public function readResponse() {
-        return $this->response->readResponse();
+        return $this->response;
     }
     public function writeRequest(\MSF\Request $request) {
         $request->encodeUsing($this->encoder);
@@ -31,11 +32,12 @@ class CurlTransport extends \MSF\Transport\HTTPTransport {
             // Since cURL returns the response right-away, save it for later
             // ... will be returned by read()
             // Leverage the HTTPTransport to parse the HTTP response
-            $this->response = new \MSF\Transport\HTTPTransport(
+            $helper = new \MSF\Transport\HTTPTransport(
                 $this->endpoint,
                 $this->encoder
             );
-            $this->response->data($response);
+            $helper->data($response);
+            $this->response = $helper->readResponse();
         }
         return strlen($request->encoded);
     }
