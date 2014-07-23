@@ -1,6 +1,7 @@
 <?php
 namespace MSF\Transport;
 
+// This should probably be renamed to PHPTransport
 // This class assumes headers have been parsed into $_SERVER and the HTTP body is in "php://input"
 // It writes out similarly ... echoing the body and using header()
 class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
@@ -14,25 +15,18 @@ class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
             }
         }
         $request->decodeUsing($this->encoder);
+        // Make the response now so Filters have it handy, and can annotate with errors if necessary
         $request->response = new \MSF\Response\HTTPResponse();
         return $request;
     }
 
-    public function writeResponse(\MSF\Response\HTTPResponse $response) {
-        // Write out non-annotation headers
-        // then
-        // Write out the response annotations as headers
-        $this->writeOOB($response->oob());
-        $response->encodeUsing($this->encoder);
-
-        echo $response->encoded;
-        return strlen($response->encoded);
-    }
-
-    protected function writeOOB($oob) {
-        foreach ($oob as $key => $value) {
+    public function writeResponse(\MSF\Response $response) {
+        foreach ($response->oob() as $key => $value) {
             header('HTTP_Z_' . strtoupper($key) . ':' . json_encode($value));
         }
+        $response->encodeUsing($this->encoder);
+        echo $response->encoded;
+        return strlen($response->encoded);
     }
 }
 
