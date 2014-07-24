@@ -59,7 +59,7 @@ class ClientTestClient extends \MSF\Client {
 
 class ClientTestServer extends MSF\Server {
     public function setup() {
-        // Set up default filters
+        $this->filters[] = new ServerRequestThrottlingFilter();
         $this->filters[] = new ServerProfilingFilter();
     }
 }
@@ -110,6 +110,26 @@ class ClientProfilingFilter extends ProfilingFilter {
 }
 class ServerProfilingFilter extends ProfilingFilter {
     protected $prefix = 'server.';
+}
+class ServerRequestThrottlingFilter implements \MSF\FilterInterface {
+    public function request(\MSF\Request $request) {
+        // Connect to redis
+        require '/home/alan/projects/periodic/vendor/predis-0.8.6/lib/Predis/Autoloader.php';
+        Predis\Autoloader::register();
+
+        $ip = $_SERVER['REMOTE_ADDR'];
+        $ts = date('YmdHi');
+        $client = new Predis\Client();
+        $val = $client->incr($ip . ':' . $ts);
+        if ($val > 2) {
+            $request->response->addError('Too fast');
+            return $request->response;
+        }
+        return $request;
+    }
+    public function response(\MSF\Response $response) {
+        return $response;
+    }
 }
 
 
