@@ -13,30 +13,29 @@ Usage
 
 Extend the following classes:
 
-* Service - Configure the following:
+* \MSF\Service - Configure the following:
   * Static interface definition
   * Method to return a client instance
   * Method to return a server instance
-* Server
-* Client
+* \MSF\Server
+* \MSF\Client
+* \MSF\ServiceHandler
 
-Call `MyService::getInstance()->server()` to get an instance of your server.
-Call `MyService::getInstance()->client()` to get an instance of your client.
+Call `YourService::getInstance()->server()` to get an instance of your server. Then `$server->run()`.
+Call `YourService::getInstance()->client()` to get an instance of your client. Then `$client->your_rpc_call($param1, $param2)`.
 
 See `tests/setup.client-test.php` for a thorough example
 
 TODO
 ====
 
+* Do simple type validation on the fields that are present, according to what's expected in the service definition. This requires the programmer to keep old/deprecated fields around until he/she absolutely doesn't want to support old clients anymore. RPC methods will receive a stdClass instance with new and/or old fields, whatever was passed, that's also present in the service definition.
+* ServiceValidator - same structure as ServiceHandler ... you implement validation. SimpleServiceValidator would do type-checking from service definition
 * Set up for installation via composer
-* Test when Server has a newer Service definition than the client
+* Give more thought to schema evolution ... test when Server has a newer Service definition than the client
 * Probably should stub out a Transport, and test Server and Filter interaction directly: make sure Filters can throw exceptions
 
 THOUGHTS
 ====
 
-How do we help the schema evolve? Would type-checking the passed params be sufficient, allowing the others to be null?
-
-Maybe it's up to newer service backends to fail when they do really need all the newest params. But that would get quite tedious, to have to add manual validation for all required params to the service handler methods.
-
-What about adding additional types like null-string, null-int32? Would allow more control over preventing nulls.
+How do we help the schema evolve? Would type-checking the passed params be sufficient, allowing the others to be null? Maybe it's up to newer service backends to fail when they do really need all the newest params. But that would get quite tedious, to have to add manual validation for all required params to the service handler methods.

@@ -1,6 +1,7 @@
 <?php
 namespace MSF;
 
+// Uhh, the interface?
 abstract class ServiceHandler {
     protected $service;
 

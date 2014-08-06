@@ -45,23 +45,22 @@ abstract class Server {
         }
         
         if ($request instanceof \MSF\Request) {
-            // validateRequest() returns prepared args array for call_user_func_array()
-            $args = $this->service->validateRequest($request, $response);
-            if ($args !== false) {
+            $rpc = $request->rpc;
+Logger::notice('eh: ' . print_r($request, true));
+            $validator = $this->service->validator();
+            $errors = $validator->$rpc($request->args);
+Logger::notice('eh: ' . print_r($errors, true));
+            if (!$errors) {
                 try {
-                    // call_user_func_array() can return false for errors,
-                    // but that means RPC calls returning false would be ambiguous, so use exceptions
-                    $return_value = call_user_func_array(array($this->handler, $request->rpc), $args);
+                    $response->body = $this->handler->$rpc($request->args);
                 } catch (\Exception $e) {
                     $response->errors = array(
                         $e->getMessage()
                     );
                 }
-                if (!$response->errors) {
-                    $response->body = $this->service->validateReturn($return_value, $request->rpc, $response);
-                }
+            } else {
+                $response->errors = $errors;
             }
-
         }
         
         // Use the $i from the above loop to loop backwards from where we left off,

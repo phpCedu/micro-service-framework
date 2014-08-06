@@ -9,24 +9,19 @@ spl_autoload_register(array($loader, 'loadClass'));
 class ClientTestService extends MSF\Service {
     public static $endpoint = 'http://localhost:9999/index.php';
 
-    public static $definition = array(
-        'reverse' => array(
-            // return type
-            'string',
-            // param names
-            array(
-                'input',
+    public function definition() {
+        return array(
+            'reverse' => array(
+                // Parameter name as key, pointing to an array of possible types
+                'input' => array('string'),
             ),
-            // associated param types
-            array(
-                'string',
-            ),
-        ),
 
-        'badReturn' => array(
-            'string'
-        )
-    );
+            'badReturn' => array()
+        );
+    }
+    public function validator() {
+        return new \MSF\ServiceValidator\SimpleInputValidator($this->definition());
+    }
 
     public function client() {
         // think client and server need separate transports
@@ -59,15 +54,15 @@ class ClientTestClient extends \MSF\Client {
 
 class ClientTestServer extends MSF\Server {
     public function setup() {
-        $this->filters[] = new ServerRequestThrottlingFilter();
+        //$this->filters[] = new ServerRequestThrottlingFilter();
         $this->filters[] = new ServerProfilingFilter();
     }
 }
 
 // The actual service implementation is done inside a ServiceHandler
 class ClientTestServiceHandler extends \MSF\ServiceHandler {
-    public function reverse($name) {
-        return strrev($name);
+    public function reverse($params) {
+        return strrev($params->input);
     }
 
     // Defined to return string, but we return false
@@ -111,6 +106,7 @@ class ClientProfilingFilter extends ProfilingFilter {
 class ServerProfilingFilter extends ProfilingFilter {
     protected $prefix = 'server.';
 }
+/*
 class ServerRequestThrottlingFilter implements \MSF\FilterInterface {
     public function request(\MSF\Request $request) {
         // Connect to redis
@@ -121,6 +117,7 @@ class ServerRequestThrottlingFilter implements \MSF\FilterInterface {
         $ts = date('YmdHi');
         $client = new Predis\Client();
         $val = $client->incr($ip . ':' . $ts);
+        // set expires on the key too
         if ($val > 2) {
             $request->response->addError('Too fast');
             return $request->response;
@@ -131,6 +128,7 @@ class ServerRequestThrottlingFilter implements \MSF\FilterInterface {
         return $response;
     }
 }
+*/
 
 
 // API VERSION 2
@@ -139,18 +137,8 @@ class ClientTestService2 extends ClientTestService {
 
     public static $definition = array(
         'reverse' => array(
-            // return type
-            'string',
-            // param names
-            array(
-                'input',
-                'times'
-            ),
-            // associated param types
-            array(
-                'string',
-                'null-int32'
-            ),
+            'input' => array('string'),
+            'times' => array('null', 'int32'),
         ),
         'badReturn' => array(
             'string'
@@ -159,11 +147,12 @@ class ClientTestService2 extends ClientTestService {
 }
 
 class ClientTestServiceHandler2 extends \MSF\ServiceHandler {
-    public function reverse($name, $times) {
-        if (is_null($times)) {
-            $times = 1;
+    public function reverse($params) {
+        if (is_null($params->times)) {
+            $params->times = 1;
         }
-        for ($i = 0; $i < $times; $i++) {
+        $name = $params->input;
+        for ($i = 0; $i < $params->times; $i++) {
             $name = strrev($name);
         }
         return $name;

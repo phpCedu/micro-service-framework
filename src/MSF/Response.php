@@ -1,26 +1,26 @@
 <?php
 namespace MSF;
 
-class Response extends \MSF\Helper\OnionProxy implements \MSF\RequestResponseInterface {
+class Response extends \MSF\Helper\OnionProxy {
     public $errors = array();
     protected $body;
     protected $encoded; // Transports only read/write encoded values
 
     public function encodeUsing(\MSF\EncoderInterface $encoder) {
-        $data = array();
+        $data = new \stdClass();
         if ($this->errors) {
-            $data['errors'] = $this->errors;
+            $data->errors = $this->errors;
         } else {
-            $data['body'] = $this->body;
+            $data->body = $this->body;
         }
         $this->encoded = $encoder->encode($data);
     }
     public function decodeUsing(\MSF\EncoderInterface $encoder) {
         $data = $encoder->decode($this->encoded);
-        if (array_key_exists('errors', $data)) {
-            $this->errors = $data['errors'];
-        } elseif (array_key_exists('body', $data)) {
-            $this->body = $data['body'];
+        if (isset($data->errors)) {
+            $this->errors = $data->errors;
+        } elseif (isset($data->body)) {
+            $this->body = $data->body;
         }
     }
 

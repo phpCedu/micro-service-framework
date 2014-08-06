@@ -24,12 +24,18 @@ abstract class Client {
 
         // prepare args key/value struct, leaving out null values
         $mapped = array();
-        if (sizeof($definition[$name]) > 1) {
-            $names = $definition[ $name ][1];
-            foreach ($args as $i => $value) {
-                if (!is_null($value)) {
-                    $mapped[ $names[$i] ] = $value;
+        if (sizeof($definition[$name])) {
+            $i = 0;
+            foreach ($definition[$name] as $key => $types) {
+                if (isset($args[$i])) {
+                    $value = $args[$i];
+                } else {
+                    $value = null;
                 }
+                if (!is_null($value)) {
+                    $mapped[ $key ] = $value;
+                }
+                $i++;
             }
         }
         $request->args = $mapped;
