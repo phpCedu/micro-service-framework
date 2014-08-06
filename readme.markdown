@@ -1,7 +1,26 @@
 Micro Services Framework
 ====
 
-This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift. RPC calls can be encoded in JSON or MsgPack
+This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift. RPC calls can be encoded in JSON, MsgPack or encoding added by you.
+
+In this project I explore what it means to provide a light micro-service framework that also supports schema evolution. Thrift accomplishes this by using protocol buffers, but I was curious whether the same thing could be achieved in another fashion. It seems that being a Tolerant Reader (bob martin) might be the best way to support schema evolution, so that is the approach I'm taking for now. In order to do so, the server side service handler might not look as you'd expect. The
+handler methods receive an object of key/value params for the params that were passed to the RPC call. 
+
+Scenario 1 - Client sending fields that are no longer supported
+    The server-side service handler method may not be defined to accept old fields, but they are still accepted. The method can access them via `$this->args->old_field_name`, etc. They may not be passed into the method, but they're still available.
+
+Scenario 2 - Client failing to send values for new fields
+    To handle this scenario, it's up to you to configure the proper validation on your service. If a field is absolutely necessary, then by all means return a validation error. But if you opt to still support old clients, then be forgiving and preserve the older functionality the client is expecting.
+
+Goals of schema evolution support:
+
+* Clients that aren't aware of the new schema can still use the service, but only if it makes sense to allow them to do so. One instance where it might not: if old request parameters were encrypted with an encryption scheme that is known to be compromised, you should likely force all clients to migrate to the new schema.
+* Are there others?
+
+How to Evolve a Schema
+    Add new fields with validation. If you need to drastically change the types allowed on an existing field, it's probably best to simply add a new field and deprecate the old one. That way a human looking at the field names doesn't get confused, and quite frankly, this framework doesn't keep track of field versions so there's no way to validate using the older method an old client might be expecting.
+
+thoughts: I just realized that an old client might not expect a new authentication filter. Framework and schema evolution doesn't address this.
 
 Requirements
 ====
@@ -29,6 +48,8 @@ See `tests/setup.client-test.php` for a thorough example
 TODO
 ====
 
+* See whether order is preserved in output objects from JSON (it's not if you convert to straight object. Fuck.
+* RPC method definition should have deprecated fields section as well, so we know how to validate them if they arrive.
 * Do simple type validation on the fields that are present, according to what's expected in the service definition. This requires the programmer to keep old/deprecated fields around until he/she absolutely doesn't want to support old clients anymore. RPC methods will receive a stdClass instance with new and/or old fields, whatever was passed, that's also present in the service definition.
 * ServiceValidator - same structure as ServiceHandler ... you implement validation. SimpleServiceValidator would do type-checking from service definition
 * Set up for installation via composer
