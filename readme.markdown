@@ -1,10 +1,25 @@
 Micro Services Framework
 ====
 
-This framework is similar to Apache Thrift, but tries to be simpler. Not specifically for REST-based RPC services ... you can create your own transports (HTTP, TCP) like in Thrift. RPC calls can be encoded in JSON, MsgPack or encoding added by you.
+This framework is inspired by Apache Thrift, but tries to be simpler. It explores the means of providing schema evolution within a light micro-service framework. Thrift accomplishes this by using protocol buffers, but I was curious whether the benefits of protocol buffers could be achieved in different ways. Being a Tolerant Reader (bob martin) might be the first step toward support of schema evolution, so that is the approach I'm taking for now.
 
-In this project I explore what it means to provide a light micro-service framework that also supports schema evolution. Thrift accomplishes this by using protocol buffers, but I was curious whether the same thing could be achieved in another fashion. It seems that being a Tolerant Reader (bob martin) might be the best way to support schema evolution, so that is the approach I'm taking for now. In order to do so, the server side service handler might not look as you'd expect. The
-handler methods receive an object of key/value params for the params that were passed to the RPC call. 
+While it comes with support for HTTP-based RPC services, it's not limited to that. As with Thrift, you can create your own transport to make RPC calls over HTTP, TCP, and so on. The RPC data can also be encoded in JSON, MsgPack, or an encoding added by you.
+
+
+Internals
+====
+
+Our RPC data structure looks like this JSON representation:
+
+`{
+    "rpc": "name_of_rpc_method",
+    "args": {
+        "arg1": "arg1value",
+        "arg2": "arg2value"
+    }
+}`
+
+The above is constructed by the Request object on the client side, passed through an encoder, and then passed to the transport.
 
 Scenario 1 - Client sending fields that are no longer supported
     The server-side service handler method may not be defined to accept old fields, but they are still accepted. The method can access them via `$this->args->old_field_name`, etc. They may not be passed into the method, but they're still available.
@@ -48,7 +63,7 @@ See `tests/setup.client-test.php` for a thorough example
 TODO
 ====
 
-* See whether order is preserved in output objects from JSON (it's not if you convert to straight object. Fuck.
+* Don't assume key order is preserved with objects or associative arrays
 * RPC method definition should have deprecated fields section as well, so we know how to validate them if they arrive.
 * Do simple type validation on the fields that are present, according to what's expected in the service definition. This requires the programmer to keep old/deprecated fields around until he/she absolutely doesn't want to support old clients anymore. RPC methods will receive a stdClass instance with new and/or old fields, whatever was passed, that's also present in the service definition.
 * ServiceValidator - same structure as ServiceHandler ... you implement validation. SimpleServiceValidator would do type-checking from service definition

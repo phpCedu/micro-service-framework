@@ -1,10 +1,9 @@
 <?php
 namespace MSF\Transport;
 
-// This should probably be renamed to PHPTransport
 // This class assumes headers have been parsed into $_SERVER and the HTTP body is in "php://input"
 // It writes out similarly ... echoing the body and using header()
-class PartialHTTPTransport extends \MSF\Transport\HTTPTransport {
+class PHPTransport extends \MSF\Transport\HTTPTransport {
     public function readRequest() {
         $request = new \MSF\Request\HTTPRequest();
         $request->encoded = file_get_contents('php://input');

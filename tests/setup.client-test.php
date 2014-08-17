@@ -7,7 +7,7 @@ spl_autoload_register(array($loader, 'loadClass'));
 
 // IMPLEMENTATIONS
 class ClientTestService extends MSF\Service {
-    public static $endpoint = 'http://localhost:9999/index.php';
+    public static $endpoint = 'http://localhost:9998/index.php';
 
     public function definition() {
         return array(
@@ -15,12 +15,10 @@ class ClientTestService extends MSF\Service {
                 // Parameter name as key, pointing to an array of possible types
                 'input' => array('string'),
             ),
-
-            'badReturn' => array()
         );
     }
     public function validator() {
-        return new \MSF\ServiceValidator\SimpleInputValidator($this->definition());
+        return new \MSF\ServiceValidator\SimpleServiceValidator($this->definition());
     }
 
     public function client() {
@@ -37,7 +35,7 @@ class ClientTestService extends MSF\Service {
         return new ClientTestServer(
             $this,
             new ClientTestServiceHandler($this),
-            new \MSF\Transport\PartialHTTPTransport(
+            new \MSF\Transport\PHPTransport(
                 static::$endpoint,
                 new \MSF\Encoder\JsonEncoder()
             )
@@ -63,11 +61,6 @@ class ClientTestServer extends MSF\Server {
 class ClientTestServiceHandler extends \MSF\ServiceHandler {
     public function reverse($params) {
         return strrev($params->input);
-    }
-
-    // Defined to return string, but we return false
-    public function badReturn() {
-        return false;
     }
 }
 
@@ -133,17 +126,16 @@ class ServerRequestThrottlingFilter implements \MSF\FilterInterface {
 
 // API VERSION 2
 class ClientTestService2 extends ClientTestService {
-    public static $endpoint = 'http://localhost:9999/index.php';
+    public static $endpoint = 'http://localhost:9998/index.php';
 
-    public static $definition = array(
-        'reverse' => array(
-            'input' => array('string'),
-            'times' => array('null', 'int32'),
-        ),
-        'badReturn' => array(
-            'string'
-        )
-    );
+    public function definition() {
+        return array(
+            'reverse' => array(
+                'input' => array('string'),
+                'times' => array('int32', 'null'),
+            ),
+        );
+    }
 }
 
 class ClientTestServiceHandler2 extends \MSF\ServiceHandler {
@@ -156,10 +148,5 @@ class ClientTestServiceHandler2 extends \MSF\ServiceHandler {
             $name = strrev($name);
         }
         return $name;
-    }
-
-    // Defined to return string, but we return false
-    public function badReturn() {
-        return false;
     }
 }

@@ -46,10 +46,8 @@ abstract class Server {
         
         if ($request instanceof \MSF\Request) {
             $rpc = $request->rpc;
-Logger::notice('eh: ' . print_r($request, true));
             $validator = $this->service->validator();
             $errors = $validator->$rpc($request->args);
-Logger::notice('eh: ' . print_r($errors, true));
             if (!$errors) {
                 try {
                     $response->body = $this->handler->$rpc($request->args);

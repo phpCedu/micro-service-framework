@@ -13,7 +13,7 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
             $this->assertObjectHasAttribute('errors', $e);
             $this->assertInternalType('array', $e->errors);
             $this->assertCount(1, $e->errors);
-            $this->assertEquals('Should be string: input', $e->errors[0]);
+            $this->assertEquals('"input" should be one of: string', $e->errors[0]);
         }
         $this->assertNotNull($e);
         try {
@@ -62,21 +62,9 @@ class ClientTest extends \PHPUnit_Framework_TestCase {
             $this->assertObjectHasAttribute('errors', $e);
             // Make sure there are 2 errors about param types
             $this->assertCount(2, $e->errors);
-            $this->assertEquals('Should be string: input', $e->errors[0]);
-            $this->assertEquals('Should be int32 or null: times', $e->errors[1]);
+            $this->assertEquals('"input" should be one of: string', $e->errors[0]);
+            $this->assertEquals('"times" should be one of: int32, null', $e->errors[1]);
         }
         // Need to make sure response is null, and exception was thrown
-
-        // Validate return type
-        try {
-            // Bad return values on server side turn into error responses
-            $response = $client->badReturn();
-        } catch (\Exception $e) {
-            $this->assertObjectHasAttribute('errors', $e);
-            // Make sure there's 1 error about return type
-            $this->assertCount(1, $e->errors);
-            $this->assertEquals('RPC call was expected to return a string', $e->errors[0]);
-
-        }
     }
 }

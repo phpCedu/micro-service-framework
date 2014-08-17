@@ -1,7 +1,7 @@
 <?php
 namespace MSF\ServiceValidator;
 
-class SimpleInputValidator {
+class SimpleServiceValidator {
     protected $definition;
 
     public function __construct($definition) {
@@ -34,19 +34,19 @@ class SimpleInputValidator {
                         $error = false;
                         break;
                     } else {
-                        $error = 'Should be string: ' . $key;
+                        $error = '"' . $key . '" should be one of: ';
                     }
                 } elseif ($type == 'int32') {
                     if (is_int($val)) {
                         $error = false;
                         break;
                     } else {
-                        $error = 'Should be int32: ' . $key;
+                        $error = '"' . $key . '" should be one of: ';
                     }
                 } elseif ($type == 'array') {
                     if (!is_array($val)) {
                         // Expected $i-th arg to be an integer
-                        $error = 'Should be an array: ' . $key;
+                        $error = '"' . $key . '" should be one of: ';
                     } else {
                         $error = false;
                         break;
@@ -54,7 +54,7 @@ class SimpleInputValidator {
                 }
             }
             if (!is_bool($error)) {
-                $errors[] = $error;
+                $errors[] = $error . implode(', ', $types);
             } elseif ($error) {
                 // $error is true
                 $errors[] = $key . ' is invalid';
