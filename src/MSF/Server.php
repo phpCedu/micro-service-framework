@@ -47,6 +47,8 @@ abstract class Server {
         if ($request instanceof \MSF\Request) {
             $rpc = $request->rpc;
             $validator = $this->service->validator();
+            // Kinda torn about passing an obj of args into the method, or using call_user_func_array with the values that map to the server-side service definition
+            // However, services that need to downgrade for older clients will have to do more work. Eh, maybe I'll change it later.
             $errors = $validator->$rpc($request->args);
             if (!$errors) {
                 try {
