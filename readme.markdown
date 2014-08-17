@@ -63,7 +63,6 @@ See `tests/setup.client-test.php` for a thorough example
 TODO
 ====
 
-* Don't assume key order is preserved with objects or associative arrays
 * RPC method definition should have deprecated fields section as well, so we know how to validate them if they arrive.
 * Do simple type validation on the fields that are present, according to what's expected in the service definition. This requires the programmer to keep old/deprecated fields around until he/she absolutely doesn't want to support old clients anymore. RPC methods will receive a stdClass instance with new and/or old fields, whatever was passed, that's also present in the service definition.
 * ServiceValidator - same structure as ServiceHandler ... you implement validation. SimpleServiceValidator would do type-checking from service definition

@@ -25,17 +25,19 @@ abstract class Client {
         // prepare args key/value struct, leaving out null values
         $mapped = array();
         if (sizeof($definition[$name])) {
-            $i = 0;
-            foreach ($definition[$name] as $key => $types) {
-                if (isset($args[$i])) {
-                    $value = $args[$i];
+            // PHP preserves key order in associative arrays, but many other languages don't,
+            // so our tests and examples use simple arrays to preserve order
+            for ($i = 0, $j = 0; $i < sizeof($definition[$name]); $i += 2, $j++) {
+                $key = $definition[$name][$i];
+                $types = $definition[$name][$i+1];
+                if (isset($args[$j])) {
+                    $value = $args[$j];
                 } else {
                     $value = null;
                 }
                 if (!is_null($value)) {
                     $mapped[ $key ] = $value;
                 }
-                $i++;
             }
         }
         $request->args = $mapped;

@@ -14,9 +14,10 @@ class SimpleServiceValidator {
             // Invalid RPC call
         }
         $input = $args[0]; // This must be an object
-        $params = $this->definition[$name];
         $errors = array();
-        foreach ($params as $key => $types) {
+        for ($i = 0; $i < sizeof($this->definition[$name]); $i += 2) {
+            $key = $this->definition[$name][$i];
+            $types = $this->definition[$name][$i+1];
             if (isset($input->$key)) {
                 $val = $input->$key;
             } else {

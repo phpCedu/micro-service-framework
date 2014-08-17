@@ -12,8 +12,8 @@ class ClientTestService extends MSF\Service {
     public function definition() {
         return array(
             'reverse' => array(
-                // Parameter name as key, pointing to an array of possible types
-                'input' => array('string'),
+                // In pairs, arg name, with an array of possible types
+                'input', array('string'),
             ),
         );
     }
@@ -131,8 +131,8 @@ class ClientTestService2 extends ClientTestService {
     public function definition() {
         return array(
             'reverse' => array(
-                'input' => array('string'),
-                'times' => array('int32', 'null'),
+                'input', array('string'),
+                'times', array('int32', 'null'),
             ),
         );
     }
