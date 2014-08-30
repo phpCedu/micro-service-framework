@@ -1,9 +1,9 @@
 Micro Services Framework
 ====
 
-This framework is inspired by Apache Thrift, but tries to be simpler. It explores the means of providing schema evolution within a light micro-service framework. Thrift accomplishes this by using protocol buffers, but I was curious whether the benefits of protocol buffers could be achieved in different ways. Being a Tolerant Reader (bob martin) might be the first step toward support of schema evolution, so that is the approach I'm taking for now.
+This is an exploratory services framework (with a form of schema evolution) inspired by Apache Thrift. Thrift accomplishes schema evolution by using protocol buffers, but I wondered how else I might be able to provide something similar. Being a Tolerant Reader (see Bob Martin's article) seems to be the first step toward support of schema evolution, so that is the approach I'm taking for now.
 
-While it comes with support for HTTP-based RPC services, it's not limited to that. As with Thrift, you can create your own transport to make RPC calls over HTTP, TCP, and so on. The RPC data can also be encoded in JSON, MsgPack, or an encoding added by you.
+This framework comes with support for HTTP-based RPC services. As with Thrift, you can create your own transport to make RPC calls over HTTP, TCP, and so on. The RPC data can also be encoded in JSON, MsgPack, or an encoding added by you.
 
 
 Internals
