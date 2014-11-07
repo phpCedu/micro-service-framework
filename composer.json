@@ -1,0 +1,6 @@
+{
+    "name": "alanszlosek/micro-service-framework",
+    "autoload": {
+        "psr-4": {"MSF\\": "src/MSF/"}
+    }
+}
